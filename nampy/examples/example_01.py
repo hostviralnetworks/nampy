@@ -1,0 +1,41 @@
+# A script to illustrate nampy and run network propagation
+import nampy
+from nampy.io import networkio
+from nampy.annotation import idmapping
+from nampy.manipulation import manipulation
+from nampy.propagation import prince
+
+# Let's work with a version of HumanNet
+# Lee, I., Blom, U. M., Wang, P. I., Shim, J. E., & Marcotte, E. M. (2011). 
+# Prioritizing candidate disease genes by network-based boosting of genome-wide association data. 
+# Genome research, 21(7), 1109–21. doi:10.1101/gr.118992.110
+data_dir = nampy.__path__[0] + '/data/'
+network_file = data_dir + "HumanNet_v1_join_networkonly.txt"
+humannet = networkio.create_network_model_from_textfile('humannet', network_file, verbose = True)
+
+# Add ids courtesy of bioservices
+# note you may need to "easy_install bioservices" first
+humannet = idmapping.get_more_node_ids(humannet, node_id_type = "Entrez Gene (GeneID)", mapping_types = ['Entrez Gene (GeneID)', "UniProtKB AC/ID", 'UniProtKB'], verbose = True)
+
+# Note we may miss a few this way, make sure we at least get all of the Entrez Gene IDs
+# e.g. the database might not requrn the id's we query with
+counter = 0
+for the_node in humannet.nodes:
+    if len(the_node.notes["Entrez Gene (GeneID)"]) == 0:
+        the_node.notes["Entrez Gene (GeneID)"].append(the_node.id)
+        counter +=1
+print(counter)
+
+# APMS host targets from
+# Jäger, S., Cimermancic, P., Gulbahce, N., Johnson, J. R., McGovern, K. E., Clarke, S. C.,
+#  … Krogan, N. J. (2012). Global landscape of HIV-human protein complexes. 
+# Nature, 481(7381), 365–70. doi:10.1038/nature10719
+hiv_apms_file = data_dir + "published_hiv_apms_factors.txt"
+apms_source = networkio.create_source_dict_from_textfile(hiv_apms_file)
+
+apms_source_dict = idmapping.get_more_source_dict_ids(apms_source, primary_key = "UniProtKB AC/ID", mapping_types = ["Entrez Gene (GeneID)", "UniProtKB AC/ID", "UniProtKB"])
+
+humannet, unmatched_ids_dict = manipulation.add_source(humannet, apms_source_dict, match_key_type = 'Entrez Gene (GeneID)')
+the_result = prince.prince(humannet, verbose = True)
+
+# The propagation scores are stored in the_result

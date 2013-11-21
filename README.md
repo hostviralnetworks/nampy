@@ -36,11 +36,11 @@ me if you are interested in contributing.
 I recommend starting with the example for now, that is stable.
 
 You may notice similarities with the open source COBRApy project:
-# Ebrahim, A., Lerman, J., Palsson, B. O., & Hyduke, D. R. (2013). 
-# COBRApy: COnstraints-Based Reconstruction and Analysis for Python. 
-# BMC systems biology, 7(1), 74. doi:10.1186/1752-0509-7-74
+Ebrahim, A., Lerman, J., Palsson, B. O., & Hyduke, D. R. (2013). 
+COBRApy: COnstraints-Based Reconstruction and Analysis for Python. 
+BMC systems biology, 7(1), 74. doi:10.1186/1752-0509-7-74
 
-# Note there is a module included to convert to COBRA models here but isn't fully tested/debugged yet.
+Note there is a module included to convert to COBRA models here but isn't fully tested/debugged yet.
 
 Release history
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

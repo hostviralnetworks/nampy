@@ -64,7 +64,7 @@ def prince(the_network, **kwargs):
         print "W' done."
 
     # now set Y
-    # set all source nodes to 1, rest to 0
+    # set all source nodes to specified value
     ft1 = zeros((the_dim, 1))
     y = zeros((the_dim, 1))
     for i, the_node in enumerate(the_network.nodes):

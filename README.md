@@ -5,7 +5,7 @@ Network Analysis and Modeling for Python
 
 
 These modules are currently under development at Sanford-Burnham Medical Research Institute
-and collaborating groups in support of multiple collaborations in the investigation of viral/host interactions,
+and collaborating groups in support of the investigation of viral/host interactions,
 
 especially flu-omics:
 www.fluomics.org

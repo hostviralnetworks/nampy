@@ -1,4 +1,4 @@
-NAMPy
+NAMpy
 =====
 
 Network Analysis and Modeling for Python
@@ -31,7 +31,7 @@ This is a work in progress and I'll try to develop it as best as
 possible as a stable tool as my research progresses.  Please contact
 me if you are interested in contributing.
 
-"NAMPy" seems shameless, albeit apt, it will probably change when I am feeling more creative.
+"NAMpy" seems shameless, albeit apt, it will probably change when I am feeling more creative.
 
 I recommend starting with the example for now, that is stable.
 

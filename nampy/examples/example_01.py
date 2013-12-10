@@ -20,7 +20,8 @@ humannet = idmapping.get_more_node_ids(humannet, node_id_type = "Entrez Gene (Ge
 # Note we may miss a few this way, make sure we at least get all of the Entrez Gene IDs
 # e.g. the database might not requrn the id's we query with
 counter = 0
-for the_node in humannet.nodes:
+# Just have one nodetype
+for the_node in humannet.nodetypes[0].nodes:
     if len(the_node.notes["Entrez Gene (GeneID)"]) == 0:
         the_node.notes["Entrez Gene (GeneID)"].append(the_node.id)
         counter +=1

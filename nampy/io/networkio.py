@@ -1,7 +1,11 @@
 from .. core.Edge import Edge
 from .. core.Node import Node
+from .. core.NodeType import NodeType
 from .. core.Network import Network
 
+saved_node_attribute_list = ['notes', 'annotation', 'source', '_nodetype']
+saved_edge_attribute_list = ['weight', 'notes', 'annotation']
+saved_network_attribute_list = ['notes', 'annotation']
 
 def pickle_network(the_network, the_filename, path = ""):
     """ Break apart and save the network
@@ -23,34 +27,37 @@ def pickle_network(the_network, the_filename, path = ""):
     from numpy import save
     from numpy import load
     import os
-    # We use a ordered dict here to avoid dependence on
+
+    # We use an ordered dict here to avoid dependence on
     # package classes.  This will ensure models can be
     # fully ported even with base class updates.
     the_node_ordered_dict = OrderedDict()
     the_edge_ordered_dict = OrderedDict()
-    for the_node in the_network.nodes:
-        the_dict = {}
-        the_dict['notes'] = the_node.notes
-        the_dict['annotation'] = the_node.annotation
-        the_dict['source'] = the_node.source
-        the_node_ordered_dict[the_node.id] = the_dict
-    for the_edge in the_network.edges:
-        the_dict = {}
-        the_dict['weight'] = the_edge.weight
-        the_dict['notes'] = the_edge.notes
-        the_dict['annotation'] = the_edge.annotation
-        the_dict['nodes'] = [the_edge._nodes[0].id, the_edge._nodes[1].id]
-        the_edge_ordered_dict[the_edge.id] = the_dict        
-    the_network_dict = {}
-    the_network_dict['nodes'] = the_node_ordered_dict
-    the_network_dict['edges'] = the_edge_ordered_dict
-    the_network_dict['id'] = the_network.id
-    the_network_dict['notes'] = the_network.notes
-    the_network_dict['annotation'] = the_network.annotation
-    
-    fp = open(path + the_filename + ".pickle", "wb")
-    cPickle.dump(the_network_dict, fp)
-    fp.close()
+    if len(the_network.nodetypes) == 1:
+        the_nodes = the_network.nodetypes[0].nodes
+        for the_node in the_nodes:
+            the_dict = {}
+            for the_attribute in saved_node_attribute_list:
+                the_dict[the_attribute] = getattr(the_node, the_attribute)
+            the_node_ordered_dict[the_node.id] = the_dict
+        for the_edge in the_network.edges:
+            the_dict = {}
+            for the_attribute in saved_edge_attribute_list:
+                the_dict[the_attribute] = getattr(the_edge, the_attribute)
+            the_dict['nodes'] = [the_edge._nodes[0].id, the_edge._nodes[1].id]
+            the_edge_ordered_dict[the_edge.id] = the_dict        
+        the_network_dict = {}
+        the_network_dict['nodes'] = the_node_ordered_dict
+        the_network_dict['edges'] = the_edge_ordered_dict
+        for the_attribute in saved_network_attribute_list:
+            if the_attribute in dir(the_network):
+                the_network_dict[the_attribute] = getattr(the_network, the_attribute)
+        the_network_dict['id'] = the_network.id
+        fp = open(path + the_filename + ".pickle", "wb")
+        cPickle.dump(the_network_dict, fp)
+        fp.close()
+    else:
+        print "Save error. Convert to monopartite network to save."
 
 
 def load_pickled_network(filename, path = ""):
@@ -70,25 +77,27 @@ def load_pickled_network(filename, path = ""):
     fp.close()
 
     the_network = Network(the_network_dict['id'])
-    the_network.notes = the_network_dict['notes']
-    the_network.annotation = the_network_dict['annotation']    
-    
+    for the_attribute in saved_network_attribute_list:
+        if the_attribute in dir(the_network):
+            setattr(the_network, the_attribute, the_network_dict[the_attribute])
+
     the_node_ordered_dict = the_network_dict['nodes']
     the_edge_ordered_dict = the_network_dict['edges']
 
     the_node_ids = the_node_ordered_dict.keys()
-    the_network.add_nodes(the_node_ids)
-    for the_node in the_network.nodes:
-        the_node.notes = the_node_ordered_dict[the_node.id]['notes']
-        the_node.annotation = the_node_ordered_dict[the_node.id]['annotation']
-        the_node.source = the_node_ordered_dict[the_node.id]['source']
-    for the_edge_id in the_edge_ordered_dict:
+    the_nodetype = the_network.nodetypes[0]
+    the_nodetype.add_nodes(the_node_ids)
+    for the_node in the_nodetype.nodes:
+        for the_attribute in saved_node_attribute_list:
+            if the_attribute in dir(the_node):
+                setattr(the_node, the_attribute, the_node_ordered_dict[the_node.id][the_attribute])
+    for the_edge_id in the_edge_ordered_dict.keys():
         the_edge_dict = the_edge_ordered_dict[the_edge_id]
-        the_weight = the_edge_dict['weight']
-        the_edge = the_network.connect_node_pair([the_network.nodes.get_by_id(the_edge_dict['nodes'][0]), the_network.nodes.get_by_id(the_edge_dict['nodes'][1])], the_weight = the_weight)
+        the_edge = the_network.connect_node_pair([the_network.nodetypes[0].nodes.get_by_id(the_edge_dict['nodes'][0]), the_network.nodetypes[0].nodes.get_by_id(the_edge_dict['nodes'][1])], the_weight = the_edge_dict['weight'])
         the_edge.id = the_edge_id
-        the_edge.notes = the_edge_dict['notes']
-        the_edge.annotation = the_edge_dict['annotation']
+        for the_attribute in saved_edge_attribute_list:
+            if the_attribute in dir(the_edge):
+                setattr(the_edge, the_attribute, the_edge_ordered_dict[the_edge.id][the_attribute])
     the_network.update()
     
     return the_network
@@ -142,14 +151,15 @@ def create_network_model_from_textfile(network_id, network_file, **kwargs):
     the_nodes.sort()
 
     the_network = Network(network_id)
-    the_network.add_nodes(the_nodes)
+    the_nodetype = the_network.nodetypes[0]
+    the_nodetype.add_nodes(the_nodes)
 
     if verbose:
         print "     ... the nodes are created."
         print "Linking the nodes, this may take a while..."
 
     for i, node_1 in enumerate(the_nodes_1):
-        the_network.connect_node_pair([the_network.nodes.get_by_id(the_nodes_1[i]), the_network.nodes.get_by_id(the_nodes_2[i])])
+        the_network.connect_node_pair([the_network.nodetypes[0].nodes.get_by_id(the_nodes_1[i]), the_network.nodetypes[0].nodes.get_by_id(the_nodes_2[i])])
         if verbose:
             if i % 10000 == 0:
                 print "Completed linking %s of %s node pairs" %(str(i), str(len(the_nodes_1)))

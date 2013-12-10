@@ -1,3 +1,4 @@
+
 def add_source(the_network, source_dict, **kwargs):
     """ Script to add sources to a network for
     network analysis from a dictionary
@@ -27,8 +28,9 @@ def add_source(the_network, source_dict, **kwargs):
         match_key_type = 'default'
 
     valid_match_key_types = ['default']
-    for the_node in the_network.nodes:
-        valid_match_key_types += the_node.notes.keys()
+    for the_nodetype in the_network.nodetypes:
+        for the_node in the_nodetype.nodes:
+            valid_match_key_types += the_node.notes.keys()
     valid_match_key_types = list(set(valid_match_key_types))
 
     if match_key_type not in valid_match_key_types:
@@ -37,28 +39,30 @@ def add_source(the_network, source_dict, **kwargs):
         
     if continue_flag:
         dict_for_pairing = {}
-        for the_node in the_network.nodes:
-            if match_key_type == 'default':
-                pairing_key_list = [the_node.id]
-            else:
-                pairing_key_list = the_node.notes[match_key_type]
-            for pairing_key in pairing_key_list:
-                if pairing_key not in dict_for_pairing.keys():
-                    dict_for_pairing[pairing_key] = {}
-                    dict_for_pairing[pairing_key]['network_ids'] = []
-                    dict_for_pairing[pairing_key]['source_dict_ids'] = []
-                dict_for_pairing[pairing_key]['network_ids'].append(the_node.id)
-        for the_source_key in source_dict.keys():
-            if match_key_type == 'default':
-                pairing_key_list = [the_source_key]
-            else:
-                pairing_key_list = source_dict[the_source_key][match_key_type]
-            for pairing_key in pairing_key_list:
-                if pairing_key not in dict_for_pairing.keys():
-                    dict_for_pairing[pairing_key] = {}
-                    dict_for_pairing[pairing_key]['network_ids'] = []
-                    dict_for_pairing[pairing_key]['source_dict_ids'] = []
-                dict_for_pairing[pairing_key]['source_dict_ids'].append(the_source_key)
+        # might want to make this node type specific in the future
+        for the_nodetype in the_network.nodetypes:
+            for the_node in the_nodetype.nodes:
+                if match_key_type == 'default':
+                    pairing_key_list = [the_node.id]
+                else:
+                    pairing_key_list = the_node.notes[match_key_type]
+                for pairing_key in pairing_key_list:
+                    if pairing_key not in dict_for_pairing.keys():
+                        dict_for_pairing[pairing_key] = {}
+                        dict_for_pairing[pairing_key]['network_ids'] = []
+                        dict_for_pairing[pairing_key]['source_dict_ids'] = []
+                        dict_for_pairing[pairing_key]['network_ids'].append(the_node.id)
+            for the_source_key in source_dict.keys():
+                if match_key_type == 'default':
+                    pairing_key_list = [the_source_key]
+                else:
+                    pairing_key_list = source_dict[the_source_key][match_key_type]
+                for pairing_key in pairing_key_list:
+                    if pairing_key not in dict_for_pairing.keys():
+                        dict_for_pairing[pairing_key] = {}
+                        dict_for_pairing[pairing_key]['network_ids'] = []
+                        dict_for_pairing[pairing_key]['source_dict_ids'] = []
+                    dict_for_pairing[pairing_key]['source_dict_ids'].append(the_source_key)
 
         unpaired_source_dict_keys = []
         pairing_key_model_one_to_source_dict_one = []
@@ -96,14 +100,16 @@ def add_source(the_network, source_dict, **kwargs):
 
         unpaired_source_dict_keys = list(set(unpaired_source_dict_keys))
 
-        network_list = []
-        for the_pairing_key in pairing_key_model_one_to_source_dict_one:
-            network_id = dict_for_pairing[the_pairing_key]['network_ids'][0]
-            source_dict_id = dict_for_pairing[the_pairing_key]['source_dict_ids'][0]
-            the_node = the_network.nodes.get_by_id(network_id)
-            the_node.source = source_dict[source_dict_id]['value']
+        for the_nodettype in the_network.nodetypes:
+            the_node_ids = [x.id for x in the_nodettype.nodes]
+            for the_pairing_key in pairing_key_model_one_to_source_dict_one:
+                network_id = dict_for_pairing[the_pairing_key]['network_ids'][0]
+                source_dict_id = dict_for_pairing[the_pairing_key]['source_dict_ids'][0]
+                if network_id in the_node_ids:
+                    the_node = the_nodettype.nodes.get_by_id(network_id)
+                    the_node.source = source_dict[source_dict_id]['value']
             
-        print("Completed adding sources with %i pairings of %i sources in the source_dict and %i nodes in the model." % (len(source_dict.keys()) - len(unpaired_source_dict_keys), len(source_dict.keys()), len(the_network.nodes)))
+        print("Completed adding sources with %i pairings of %i sources in the source_dict and %i nodes in the model." % (len(source_dict.keys()) - len(unpaired_source_dict_keys), len(source_dict.keys()), len(the_network.nodetypes[0].nodes)))
             
         return the_network, unmatched_ids_dict
     else:

@@ -174,7 +174,9 @@ def get_more_node_ids(the_network, **kwargs):
 
     if continue_flag:
         query_string = ''
-        model_node_ids = [x.id for x in the_network.nodes]
+        model_node_ids = []
+        for the_nodetype in the_network.nodetypes:
+            model_node_ids += [x.id for x in the_nodetype.nodes]
         for the_node_id in model_node_ids:
             if len(query_string) > 0:
                 query_string = query_string + ' ' + the_node_id
@@ -185,15 +187,15 @@ def get_more_node_ids(the_network, **kwargs):
             the_result = u.mapping(fr = mapping_dict[node_id_type], to = mapping_dict[the_target_type], query = query_string)
             if verbose:
                 print("Got mapping for %s to %s." % (node_id_type, the_target_type))
-            for the_node in the_network.nodes:
-                if (the_node.id in the_result.keys()):
-                    if len(the_result[the_node.id]) > 0:
-                        the_node.notes[the_target_type] = the_result[the_node.id]
+            for the_nodetype in the_network.nodetypes:
+                for the_node in the_nodetype.nodes:
+                    if (the_node.id in the_result.keys()):
+                        if len(the_result[the_node.id]) > 0:
+                            the_node.notes[the_target_type] = the_result[the_node.id]
+                        else:
+                            the_node.notes[the_target_type] = []
                     else:
                         the_node.notes[the_target_type] = []
-                else:
-                    the_node.notes[the_target_type] = []
-
 
     return the_network
 

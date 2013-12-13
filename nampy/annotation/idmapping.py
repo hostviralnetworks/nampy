@@ -311,8 +311,6 @@ def get_more_node_ids(the_network, **kwargs):
                 the_result.update(u.mapping(fr = available_mapping_source[node_id_type], to = available_mapping_target[the_target_type], query = the_query_string))
             if verbose:
                 print("Got mapping for %s to %s." % (node_id_type, the_target_type))
-            import pdb
-            pdb.set_trace()
             for the_nodetype in the_network.nodetypes:
                 for the_node in the_nodetype.nodes:
                     if (the_node.id in the_result.keys()):

@@ -15,6 +15,10 @@ humannet = networkio.create_network_model_from_textfile('humannet', network_file
 
 # Add ids courtesy of bioservices
 # note you may need to "easy_install bioservices" first
+# also, you may want to add email = 'me@myemail.me'
+# so ncbi can contact you if there are issues with the query
+# Note there may some errors returned while querying but 
+# each query is generally successful within the three tries.
 humannet = idmapping.get_more_node_ids(humannet, node_id_type = "Entrez Gene (GeneID)", mapping_types = ['Entrez Gene (GeneID)', "UniProtKB ACC", 'UniProtKB ID'], verbose = True)
 
 # Note we may miss a few this way, make sure we at least get all of the Entrez Gene IDs
@@ -34,7 +38,13 @@ print(counter)
 hiv_apms_file = data_dir + "published_hiv_apms_factors.txt"
 apms_source = networkio.create_source_dict_from_textfile(hiv_apms_file)
 
-apms_source_dict = idmapping.get_more_source_dict_ids(apms_source, primary_key = "UniProtKB ACC/ID", mapping_types = ["Entrez Gene (GeneID)", "UniProtKB ACC", "UniProtKB ID"])
+apms_source_dict = idmapping.get_more_source_dict_ids(apms_source, "UniProtKB ACC/ID", mapping_types = ["Entrez Gene (GeneID)", "UniProtKB ACC", "UniProtKB ID"])
+counter = 0
+for the_key in apms_source_dict.keys():
+    if len(apms_source_dict[the_key]["UniProtKB ACC"]) == 0:
+        apms_source_dict[the_key]["UniProtKB ACC"].append(the_key)
+        counter +=1
+print(counter)
 
 humannet, unmatched_ids_dict = manipulation.add_source(humannet, apms_source_dict, match_key_type = 'Entrez Gene (GeneID)')
 the_result = prince.prince(humannet, verbose = True)

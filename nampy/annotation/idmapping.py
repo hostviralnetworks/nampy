@@ -416,7 +416,7 @@ def get_more_source_dict_ids(source_dict, primary_key, **kwargs):
                 the_value = source_dict[the_key]
                 source_dict[the_key] = {}
                 source_dict[the_key]['value'] = the_value
-
+                
         for the_target_type in mapping_types:
             the_result = {}
             for the_query_string in the_query_string_list:

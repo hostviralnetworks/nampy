@@ -190,6 +190,13 @@ class DictList(list):
     def __deepcopy__(self, *args, **kwargs):
         return DictList((deepcopy(i) for i in self))
 
+    def _remove_subset(self, subset):
+        the_list = [x for x in self if x not in subset]
+        self[0: (len(the_list) - 1)] = the_list
+        del self[len(the_list):]
+        self._generate_index()
+        
+    
     # these functions are slower because they rebuild the _dict every time
     # TODO: speed up
     def insert(self, index, object):

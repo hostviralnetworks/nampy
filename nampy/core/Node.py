@@ -30,9 +30,9 @@ class Node(Object):
 
     def remove_edges(self, the_edge_list):
         for the_edge in the_edge_list:
-            the_index = self._edges.index(the_edge)
-            self._edges.pop(the_index)
+            self._edges.remove(the_edge)
 
-
+    def set_nodetype(self, the_new_nodetype):
+        setattr(self, '_nodetype', the_new_nodetype)
 
 

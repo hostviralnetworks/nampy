@@ -143,3 +143,21 @@ class Network(Object):
                 the_node.add_edges([the_edge])
             setattr(the_edge, '_network', self)
         return the_edge
+            
+
+    def remove_edges(self, the_edge_list):
+        if sum([type(the_edge) == str for the_edge in the_edge_list]) == len(the_edge_list):
+            the_edge_list = [self.edges.get_by_id(the_edge) for the_edge in the_edge_list]
+        node_edge_remove_dict = {}
+        the_node_set = []
+        for the_edge in the_edge_list:
+            the_node_set += [the_edge._nodes[0], the_edge._nodes[1]]
+        the_node_set = set(the_node_set)
+        node_edge_remove_dict = {the_node: [] for the_node in the_node_set}
+        for the_edge in the_edge_list:
+            node_edge_remove_dict[the_edge._nodes[0]].append(the_edge)
+            node_edge_remove_dict[the_edge._nodes[1]].append(the_edge)
+            setattr(the_edge, '_network', None)
+        self.edges._remove_subset(the_edge_list)
+        for the_node in node_edge_remove_dict.keys():
+            the_node.remove_edges(node_edge_remove_dict[the_node])

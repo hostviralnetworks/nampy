@@ -41,31 +41,16 @@ class NodeType(Object):
         self.nodes.extend(the_node_list)
 
 
-
-            
-
-    def remove_edges(self, the_edge_list):
-        if sum([type(the_edge) == str for the_edge in the_edge_list]) == len(the_edge_list):
-            the_edge_list = [self.edges.get_by_id(the_edge) for the_edge in the_edge_list]
-        for the_edge in the_edge_list:
-            the_node_pair = the_edge._nodes
-            the_node_pair[0].remove_edges([the_edge])
-            the_node_pair[1].remove_edges([the_edge])
-            setattr(the_edge, '_network', None)
-            #the_index = self.edges.index(the_edge)
-            #self.edges.pop(the_index)
-            self.edges.remove(the_edge) 
-
-
     def remove_nodes(self, the_node_list):
         if sum([type(the_node) == str for the_node in the_node_list]) == len(the_node_list):
             the_node_list = [self.nodes.get_by_id(the_node) for the_node in the_node_list]
-        edges_to_remove = []
+        edges_to_remove = set([])
         for the_node in the_node_list:
             for the_edge in the_node._edges:
-                edges_to_remove.append(the_node)
-            self.remove_edges(edges_to_remove)
-            #the_index = self.nodes.index(the_node)
-            self.nodes.remove(the_node)
+                edges_to_remove.add(the_edge)
             setattr(the_node, '_network', None)
             setattr(the_node, '_nodetype', None)
+            self.nodes.remove(the_node)
+        self._network.remove_edges(edges_to_remove)
+            
+

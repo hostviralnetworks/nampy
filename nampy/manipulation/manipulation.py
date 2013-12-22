@@ -67,6 +67,7 @@ def add_source(the_network, source_dict, **kwargs):
         unpaired_source_dict_keys = []
         pairing_key_model_one_to_source_dict_one = []
         unmatched_ids_dict = {}
+        matched_ids_dict = {}
         unmatched_ids_dict['source_dict_one_to_network_many'] = {}
         unmatched_ids_dict['network_one_to_source_dict_many'] = {}
         unmatched_ids_dict['source_dict_many_to_network_many'] = {}
@@ -97,6 +98,10 @@ def add_source(the_network, source_dict, **kwargs):
                 unmatched_ids_dict[the_mapping_type][the_pairing_key] = {}
                 unmatched_ids_dict[the_mapping_type][the_pairing_key]['network_ids'] = network_ids
                 unmatched_ids_dict[the_mapping_type][the_pairing_key]['source_dict_ids'] = source_dict_ids
+            else:
+                matched_ids_dict[the_pairing_key] = {}
+                matched_ids_dict[the_pairing_key]['network_ids'] = network_ids
+                matched_ids_dict[the_pairing_key]['source_dict_ids'] = source_dict_ids
 
         unpaired_source_dict_keys = list(set(unpaired_source_dict_keys))
 
@@ -109,9 +114,13 @@ def add_source(the_network, source_dict, **kwargs):
                     the_node = the_nodettype.nodes.get_by_id(network_id)
                     the_node.source = source_dict[source_dict_id]['value']
             
-        print("Completed adding sources with %i pairings of %i sources in the source_dict and %i nodes in the model." % (len(source_dict.keys()) - len(unpaired_source_dict_keys), len(source_dict.keys()), len(the_network.nodetypes[0].nodes)))
+        print("Completed adding sources with %i pairings of %i sources in the source_dict and %i nodes in the model." % (len(pairing_key_model_one_to_source_dict_one), len(source_dict.keys()), len(the_network.nodetypes[0].nodes)))
+
+        summary_dict = {}
+        summary_dict['matched_ids'] = matched_ids_dict
+        summary_dict['unmatched_ids'] = unmatched_ids_dict
             
-        return the_network, unmatched_ids_dict
+        return the_network, summary_dict
     else:
         return None, None
 

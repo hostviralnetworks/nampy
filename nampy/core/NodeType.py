@@ -30,7 +30,8 @@ class NodeType(Object):
         if sum([type(x) == str for x in the_node_list]) == len(the_node_list):
             the_node_list_by_id = the_node_list
         else:
-            the_node_list_by_id = [x.id for x in self.nodes]
+            # Note a mix of id strings and objects will cause this to fail
+            the_node_list_by_id = [x.id for x in the_node_list]
         existing_nodes_by_id = [x.id for x in self.nodes]
         # Safety check: filter out to make sure redundant nodes are not added
         the_node_list_by_id = [x for x in the_node_list_by_id if x not in existing_nodes_by_id]

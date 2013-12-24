@@ -225,7 +225,8 @@ default_mapping_target_list = ["UniProtKB ACC",
 
 
 def get_more_node_ids(the_network, **kwargs):
-    """ Script to add more ids to model notes
+    """ Script to add more identifiers to model notes
+    based on the node.id
 
     Arguments:
      the_network: a Network object, modified in place

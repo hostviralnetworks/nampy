@@ -7,6 +7,18 @@ saved_node_attribute_list = ['notes', 'annotation', 'source', '_nodetype']
 saved_edge_attribute_list = ['weight', 'notes', 'annotation']
 saved_network_attribute_list = ['notes', 'annotation']
 
+def is_float_try(str):
+    """ Simple test to check if a string can be represented as a 
+    floating point.
+
+    """
+    try:
+        float(str)
+        return True
+    except ValueError:
+        return False
+
+
 def pickle_network(the_network, the_filename, path = ""):
     """ Break apart and save the network
 
@@ -14,8 +26,6 @@ def pickle_network(the_network, the_filename, path = ""):
      the_network: object to save
      filename: effectively a prefix, don't include .pickle, .npy, etc..., these will be added
      path: directory to save to
-
-
 
     
     """
@@ -153,13 +163,18 @@ def create_network_model_from_textfile(network_id, network_file, **kwargs):
     the_network = Network(network_id)
     the_nodetype = the_network.nodetypes[0]
     the_nodetype.add_nodes(the_nodes)
+    # we will define nodes as the default 'monopartite' nodetype
+    for the_node in the_nodetype.nodes:
+        the_node.set_nodetype(the_nodetype.id)
 
     if verbose:
         print "     ... the nodes are created."
         print "Linking the nodes, this may take a while..."
 
     for i, node_1 in enumerate(the_nodes_1):
-        the_network.connect_node_pair([the_network.nodetypes[0].nodes.get_by_id(the_nodes_1[i]), the_network.nodetypes[0].nodes.get_by_id(the_nodes_2[i])])
+        # avoid nonsensical edges
+        if the_nodes_1[i] != the_nodes_2[i]:
+            the_network.connect_node_pair([the_network.nodetypes[0].nodes.get_by_id(the_nodes_1[i]), the_network.nodetypes[0].nodes.get_by_id(the_nodes_2[i])])
         if verbose:
             if i % 10000 == 0:
                 print "Completed linking %s of %s node pairs" %(str(i), str(len(the_nodes_1)))
@@ -211,3 +226,86 @@ def create_source_dict_from_textfile(source_file, **kwargs):
             source_dict[file_node_id]['value'] = the_value
 
     return source_dict
+
+
+def read_table_file_to_dict(filename, **kwargs):
+    """simple function to extract key:value from an Unix /
+    tab-delineated file.  This is useful for getting node / edge
+    attributes stored in text format.
+
+    Arguments:
+     filename
+
+    kwargs:
+     top_key: if left blank, it is assumed the table lacks headers (e.g. the
+              first line is just data)
+     subfield_key_list: a list of fields to include.  Leave blank if all
+                        fields are to be included.
+     commentchar: Lines starting with this character/string
+                  will be ignored
+    
+    """
+
+    if 'top_key' in kwargs:
+        top_key = kwargs['top_key']
+    else:
+        top_key = ''
+
+    if 'subfield_key_list' in kwargs:
+        subfield_key_list = kwargs['subfield_key_list']
+    else:
+        subfield_key_list = []
+
+    if 'commentchar' in kwargs:
+        commentchar = kwargs['commentchar']
+    else:
+        commentchar = ""
+
+    if 'force_to_float' in kwargs:
+        force_to_float = kwargs['force_to_float']
+    else:
+        force_to_float = True
+    
+    fp = open(filename, 'rU')
+    the_list = fp.readlines()
+    
+    the_list = [x.rstrip("\n") for x in the_list]
+    
+    if (len(commentchar) > 0):
+        found_first = False
+        while not(found_first):
+            if the_list[0].startswith(commentchar):
+                the_list.pop(0)
+            else:
+                found_first = True
+                
+    if top_key == '':
+        firstline = the_list[0].split("\t")
+        firstline = [str(i) for i, x in enumerate(firstline)]
+        keyindex = 0
+    else:
+        firstline = the_list[0].split("\t")
+        keyindex = firstline.index(top_key)        
+
+    if (len(subfield_key_list) > 0):
+        valueindices = [firstline.index(subfield_key) for subfield_key in subfield_key_list]
+    else:
+        valueindices = [x for x in range(0, len(firstline)) if (x != keyindex)]
+        subfield_key_list = [firstline[x] for x in valueindices]
+
+    if top_key != '':
+        the_list.pop(0)
+    
+    return_dict={}
+    for the_line in the_list:
+        if ((len(commentchar) == 0) | (not(the_line.startswith(commentchar)))):
+            the_line = the_line.split("\t")
+            return_dict[the_line[keyindex]] = {}
+            for index, subfield_key in enumerate(subfield_key_list):
+                cur_value = the_line[valueindices[index]]
+                if force_to_float:
+                    if is_float_try(cur_value):
+                        cur_value = float(cur_value)
+                return_dict[the_line[keyindex]][subfield_key] = cur_value
+            
+    return return_dict

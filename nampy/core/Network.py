@@ -24,10 +24,10 @@ class Network(Object):
         # string to indicate we won't enforce
         # that distinct node types be broken into
         # separate lists
-        self.add_node_type('monopartite')
+        self.add_nodetype('monopartite')
 
         
-    def add_node_type(self, the_node_type_id):
+    def add_nodetype(self, the_node_type_id):
         """ Add a node type to the model.
         
         Arguments:
@@ -76,6 +76,8 @@ class Network(Object):
                 all_node_ids.append(the_node.id)
         # TODO: add a check for multipartite networks so edges don't
         # connect nodes of the same nodetype
+        # no, this is not right, e.g. want to allow
+        # host-host and host-virus interactions
 
 
     def convert_to_multipartite(self):
@@ -96,15 +98,20 @@ class Network(Object):
             existing_nodetype_ids = [x.id for x in self.nodetypes]
 
             if len(nodetype_to_node_dict.keys()) > 1:
-                if 'monopartite' in nodetype_dict.keys():
-                    print "Error, cannot convert to multipartite if nodes have monopartite nodetype designation."
-                else:
-                    for the_nodetype_id in nodetype_to_node_dict.keys():
-                        the_nodetype = self.add_nodetype(the_nodetype_id)
-                        the_nodes = nodetype_to_node_dict[the_nodetype_id]
-                        the_nodetype.extend(the_nodes)
-                old_nodetype = self.nodetype.get_by_id("monopartite")
-                self.nodetype.pop(old_nodetype)  
+                # might want to enforce this in the future
+                # if 'monopartite' in nodetype_to_node_dict.keys():
+                #     print "Error, cannot convert to multipartite if all nodes have monopartite nodetype designation."
+                # else:
+                old_nodetype = self.nodetypes.get_by_id("monopartite")
+                for the_nodetype_id in nodetype_to_node_dict.keys():
+                    the_nodetype = self.add_nodetype(the_nodetype_id)
+                    the_nodes = nodetype_to_node_dict[the_nodetype_id]
+                    for the_node in the_nodes:
+                        old_nodetype.nodes.remove(the_node)
+                    the_nodetype.add_nodes(the_nodes)
+                if len(old_nodetype.nodes) == 0:
+                    setattr(old_nodetype, '_network', None)
+                    self.nodetypes.remove(old_nodetype)  
             else:
                 print "Need more than one nodetype designation to convert to multipartite."
 
@@ -114,13 +121,19 @@ class Network(Object):
         if (len(self.nodetypes) == 1) & (self.nodetypes[0].id == 'monopartite'):
             print "You already have a monopartite network. Exiting..."
         else:
-            if 'monopartite' not in [x.id for x in nodetypes]:
-                the_node_list = []
-                for the_nodetype in self.nodetypes:
-                    the_node_list += the_nodetype.nodes
-                    self.pop(the_nodetype)
-                the_nodetype = self.add_node_type("monopartite")
-                the_nodetype.nodes.extend(the_node_list)
+            the_old_nodetype_ids = [x.id for x in self.nodetypes]
+            if 'monopartite' not in [x.id for x in self.nodetypes]:
+                the_nodetype = self.add_nodetype("monopartite")
+            else:
+                the_nodetype = self.nodetypes.get_by_id("monopartite")
+            the_node_list = []
+            for the_old_nodetype_id in the_old_nodetype_ids:
+                if the_old_nodetype_id != "monopartite":
+                    the_old_nodetype = self.nodetypes.get_by_id(the_old_nodetype_id)
+                    the_node_list += the_old_nodetype.nodes
+                    self.nodetypes.remove(the_old_nodetype)
+                    setattr(the_old_nodetype, '_network', None)
+            the_nodetype.nodes.extend(the_node_list)
                     
 
     def connect_node_pair(self, the_node_pair, the_weight = 1):

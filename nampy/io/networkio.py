@@ -205,8 +205,12 @@ def create_network_model_from_textfile(network_id, network_file, **kwargs):
 
     the_nodes_1 = [the_network.nodetypes[0].nodes.get_by_id(the_id) for the_id in the_nodes_1]
     the_nodes_2 = [the_network.nodetypes[0].nodes.get_by_id(the_id) for the_id in the_nodes_2]
+    # Get rid of duplicate entries
+    the_node_pairs = [[the_nodes_1[i], the_nodes_2[i]] for i in range(0, len(the_nodes_1))]
+    # Get rid of pairs where node pairs with itself
+    the_node_pairs = [x for x in the_node_pairs if (x[0] != x[1])]
         
-    the_edge_list = the_network.connect_node_pair_set(zip(the_nodes_1, the_nodes_2), **kwargs)
+    the_edge_list = the_network.connect_node_pair_set(the_node_pairs, **kwargs)
     
     the_network.update()
 

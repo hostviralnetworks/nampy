@@ -18,5 +18,13 @@ class Edge(Object):
             Object.__init__(self, id)
             self._nodes = DictList(node_pair_list)
             self.weight = the_weight
-            self._model = None
-     
+            self._network = None
+
+
+    def update_id(self):
+        node_pair_list = self._nodes
+        self.id = node_pair_list[0].id + '_' + node_pair_list[1].id
+        self._network.edges._generate_index()
+
+
+        

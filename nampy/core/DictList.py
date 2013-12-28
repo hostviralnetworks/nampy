@@ -115,12 +115,6 @@ class DictList(list):
         self._dict[the_id] = i
         self._object_dict[the_id] = y
 
-    def append(self, object):
-        the_id = get_id(object)
-        self._check(the_id)
-        self._dict[the_id] = len(self)
-        super(DictList, self).append(object)
-        self._object_dict[the_id] = object
 
     def union(self, iterable):
         """adds elements with id's not already in the model"""
@@ -128,8 +122,6 @@ class DictList(list):
          for i in iterable
          if get_id(i) not in self._dict]
 
-    def extend(self, iterable):
-        [self.append(i) for i in iterable]
 
     def __add__(self, other, should_deepcopy=True):
         """
@@ -190,15 +182,45 @@ class DictList(list):
     def __deepcopy__(self, *args, **kwargs):
         return DictList((deepcopy(i) for i in self))
 
-    def _remove_subset(self, subset):
-        the_list = [x for x in self if x not in subset]
-        self[0: (len(the_list) - 1)] = the_list
-        del self[len(the_list):]
-        self._generate_index()
-        
-    
     # these functions are slower because they rebuild the _dict every time
     # TODO: speed up
+
+
+
+    def extend(self, iterable):
+        # Want something like
+        # [self.append(i) for i in iterable]
+        # But make a new function to avoid
+        # regenerating indices until the end
+        for i in iterable:
+            the_id = get_id(i)
+            self._check(the_id)
+            self._dict[the_id] = len(self)
+            super(DictList, self).append(i)
+            self._object_dict[the_id] = i
+        # This was not in the version from Ebrahim
+        # but this call makes sense here
+        self._generate_index()
+
+
+    def append(self, object):
+        the_id = get_id(object)
+        self._check(the_id)
+        self._dict[the_id] = len(self)
+        super(DictList, self).append(object)
+        self._object_dict[the_id] = object
+        # This was not in the version from Ebrahim
+        # but this call could make sense here
+        self._generate_index()
+
+    
+    def remove_subset(self, subset):
+        the_list = [x for x in self if x not in subset]
+        self[0: len(the_list)] = the_list
+        del self[len(the_list):]
+        self._generate_index()
+
+
     def insert(self, index, object):
         self._check(get_id(object))
         super(DictList, self).insert(index, object)

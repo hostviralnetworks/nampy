@@ -37,7 +37,7 @@ class Network(Object):
         """
         if len(self.nodetypes) > 0:
             if the_node_type_id in [x.id for x in self.nodetypes]:
-                return self.nodetypes.get_by_id(the_node_type)
+                return self.nodetypes.get_by_id(the_node_type_id)
         the_node_type = NodeType(the_node_type_id)
         setattr(the_node_type, '_network', self)
         self.nodetypes.append(the_node_type)
@@ -61,11 +61,13 @@ class Network(Object):
                             self.matrix[j, i] = the_edge.weight
                     return self.matrix
         self.matrix = zeros((0,0), dtype = float)
+        return self.matrix
         
 
 
     def update(self):
-        self.update_matrix()
+        self.nodetypes._generate_index()
+        self.edges._generate_index()
         all_node_ids = []
         for the_nodetype in self.nodetypes:
             for the_node in the_nodetype.nodes:
@@ -74,6 +76,8 @@ class Network(Object):
                 if the_node.id in all_node_ids:
                     print "Warning, repeated node ids. This will break things, please fix %s." %(the_node.id)
                 all_node_ids.append(the_node.id)
+            the_nodetype.nodes._generate_index()
+        self.update_matrix()
         # TODO: add a check for multipartite networks so edges don't
         # connect nodes of the same nodetype
         # no, this is not right, e.g. want to allow
@@ -137,10 +141,10 @@ class Network(Object):
                     
 
     def connect_node_pair(self, the_node_pair, the_weight = 1):
-        """ Connect two nodes and create an edge.
+        """ Connect two nodes and creates an edge.
 
         Arguments:
-         the_node_list: a list of nodes id's (strings) or nodes
+         the_node_list: a list of 2 node objects
           note NODE IDs MUST BE UNIQUE
 
         Returns:
@@ -156,21 +160,84 @@ class Network(Object):
                 the_node.add_edges([the_edge])
             setattr(the_edge, '_network', self)
         return the_edge
+
+
+    def connect_node_pair_set(self, the_node_pair_list, **kwargs):
+        """ Connect a set of node pairs to create edges.
+
+        Arguments:
+         the_node_pair_list: a list of [node1, node2]
+          note NODE IDs MUST BE UNIQUE
+
+        kwargs:
+         the_weight_list:  alist of values to use for weights
+
+        Returns:
+         the_edge_list
+        
+        """
+        # Could add more proofing of the input
+        # but this needs to be fast.
+        # We delay adding object references
+        # because regenerating the indexes is slow
+        from collections import defaultdict
+        node_to_new_edge_dict = defaultdict(list)
+        
+        if 'the_weight_list' in kwargs:
+            if len(kwargs['the_weight_list']) == len(the_node_pair_list):
+                the_weight_list = kwargs['the_weight_list']
+            else:
+                the_weight_list = [1 for x in the_node_pair_list]
+        else:
+            the_weight_list = [1 for x in the_node_pair_list]
+
+        the_edge_list = []
+        for i, the_node_pair in enumerate(the_node_pair_list):
+            the_weight = the_weight_list[i]
+            the_edge = Edge(the_node_pair, the_weight)
+            setattr(the_edge, '_network', self)
+            the_edge_list.append(the_edge)
+            for the_node in the_node_pair:
+                node_to_new_edge_dict[the_node].append(the_edge)
+
+        for the_node in node_to_new_edge_dict.keys():
+            the_node.add_edges(node_to_new_edge_dict[the_node])
+
+        self.edges.extend(the_edge_list)
+        
+        return the_edge_list
             
 
     def remove_edges(self, the_edge_list):
         if sum([type(the_edge) == str for the_edge in the_edge_list]) == len(the_edge_list):
             the_edge_list = [self.edges.get_by_id(the_edge) for the_edge in the_edge_list]
+        else:
+            # refilter these to make sure references are OK
+            the_edge_list = [self.edges.get_by_id(x.id) for x in the_edge_list]
+
         node_edge_remove_dict = {}
         the_node_set = []
+
         for the_edge in the_edge_list:
             the_node_set += [the_edge._nodes[0], the_edge._nodes[1]]
+
         the_node_set = set(the_node_set)
         node_edge_remove_dict = {the_node: [] for the_node in the_node_set}
         for the_edge in the_edge_list:
             node_edge_remove_dict[the_edge._nodes[0]].append(the_edge)
             node_edge_remove_dict[the_edge._nodes[1]].append(the_edge)
             setattr(the_edge, '_network', None)
-        self.edges._remove_subset(the_edge_list)
+
+        self.edges.remove_subset(the_edge_list)
         for the_node in node_edge_remove_dict.keys():
             the_node.remove_edges(node_edge_remove_dict[the_node])
+            
+
+    def get_node_locations(self):
+        if (len(self.nodetypes) == 1) & (self.nodetypes[0] == 'monopatite'):
+            the_node_locations = {x: 'monopartite' for x in self.nodetypes[0].nodes}
+        else:
+            the_node_locations = {}
+            for the_nodetype in self.nodetypes:
+                the_node_locations.update({x.id: the_nodetype.id for x in the_nodetype.nodes})
+        return the_node_locations

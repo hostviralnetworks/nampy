@@ -70,21 +70,39 @@ def pickle_network(the_network, the_filename, path = ""):
         print "Save error. Convert to monopartite network to save."
 
 
-def load_pickled_network(filename, path = ""):
+def load_pickled_network(filename, **kwargs):
     """ Load network object from file
 
     Arguments:
      filename: effectively a prefix, don't include .pickle, .npy, etc..., these will be added
-     dir: directory to load from
+    kwargs:
+     path: directory to load from
 
     
     """
     import cPickle
     import os
+
+    if 'path' in kwargs:
+        path = kwargs['path']
+    else:
+        path = ""
+
+    if 'verbose' in kwargs:
+        verbose = kwargs['verbose']
+    else:
+        verbose = False
     
+
+    if verbose:
+        print 'Loading network file %s ...' %(path + filename + ".pickle")
+        
     fp = open(path + filename + ".pickle", "rb")
     the_network_dict = cPickle.load(fp)
     fp.close()
+
+    if verbose:
+        print '... file loaded. Creating network nodes ...'    
 
     the_network = Network(the_network_dict['id'])
     for the_attribute in saved_network_attribute_list:
@@ -101,13 +119,27 @@ def load_pickled_network(filename, path = ""):
         for the_attribute in saved_node_attribute_list:
             if the_attribute in dir(the_node):
                 setattr(the_node, the_attribute, the_node_ordered_dict[the_node.id][the_attribute])
-    for the_edge_id in the_edge_ordered_dict.keys():
+
+    if verbose:
+        print '... nodes created. Linking nodes ...'  
+
+    the_node_pair_list = []
+    for i, the_edge_id in enumerate(the_edge_ordered_dict.keys()):
         the_edge_dict = the_edge_ordered_dict[the_edge_id]
-        the_edge = the_network.connect_node_pair([the_network.nodetypes[0].nodes.get_by_id(the_edge_dict['nodes'][0]), the_network.nodetypes[0].nodes.get_by_id(the_edge_dict['nodes'][1])], the_weight = the_edge_dict['weight'])
-        the_edge.id = the_edge_id
+        the_node_pair = [the_network.nodetypes[0].nodes.get_by_id(the_edge_dict['nodes'][0]), the_network.nodetypes[0].nodes.get_by_id(the_edge_dict['nodes'][1])]
+        the_node_pair_list.append(the_node_pair)
+
+    the_edge_list = the_network.connect_node_pair_set(the_node_pair_list, **kwargs)
+                
+    for the_edge in the_edge_list:
         for the_attribute in saved_edge_attribute_list:
             if the_attribute in dir(the_edge):
                 setattr(the_edge, the_attribute, the_edge_ordered_dict[the_edge.id][the_attribute])
+
+    # if verbose:
+    #         if i % 10000 == 0:
+    #             print "Completed linking %s of %s node pairs" %(str(i), str(len(the_edge_ordered_dict.keys())))
+        
     the_network.update()
     
     return the_network
@@ -130,7 +162,7 @@ def create_network_model_from_textfile(network_id, network_file, **kwargs):
     Returns:
      network_model
 
-                  
+
     """
 
     if 'verbose' in kwargs:
@@ -166,19 +198,16 @@ def create_network_model_from_textfile(network_id, network_file, **kwargs):
     # we will define nodes as the default 'monopartite' nodetype
     for the_node in the_nodetype.nodes:
         the_node.set_nodetype(the_nodetype.id)
-
+        
     if verbose:
         print "     ... the nodes are created."
         print "Linking the nodes, this may take a while..."
 
-    for i, node_1 in enumerate(the_nodes_1):
-        # avoid nonsensical edges
-        if the_nodes_1[i] != the_nodes_2[i]:
-            the_network.connect_node_pair([the_network.nodetypes[0].nodes.get_by_id(the_nodes_1[i]), the_network.nodetypes[0].nodes.get_by_id(the_nodes_2[i])])
-        if verbose:
-            if i % 10000 == 0:
-                print "Completed linking %s of %s node pairs" %(str(i), str(len(the_nodes_1)))
-
+    the_nodes_1 = [the_network.nodetypes[0].nodes.get_by_id(the_id) for the_id in the_nodes_1]
+    the_nodes_2 = [the_network.nodetypes[0].nodes.get_by_id(the_id) for the_id in the_nodes_2]
+        
+    the_edge_list = the_network.connect_node_pair_set(zip(the_nodes_1, the_nodes_2), **kwargs)
+    
     the_network.update()
 
     return the_network

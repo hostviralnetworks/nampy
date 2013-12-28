@@ -2,6 +2,8 @@ from copy import deepcopy
 import re
 from .Object import Object
 from .DictList import DictList
+#from .Edge import Edge
+
 
 class Node(Object):
     """
@@ -29,10 +31,13 @@ class Node(Object):
         self._edges.extend(the_edge_list)
 
     def remove_edges(self, the_edge_list):
-        for the_edge in the_edge_list:
-            self._edges.remove(the_edge)
+        self._edges.remove_subset(the_edge_list)
 
     def set_nodetype(self, the_new_nodetype):
         setattr(self, '_nodetype', the_new_nodetype)
 
-
+    def get_edges(self):
+        the_edge_list = [x for x in self._edges]
+        return the_edge_list
+            
+        

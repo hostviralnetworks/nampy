@@ -125,3 +125,168 @@ def add_source(the_network, source_dict, **kwargs):
         return None, None
 
 
+
+def duplicate_node(the_node, new_id):
+    """ Duplicates a node with associated data
+    and adds it to the network as a duplicate
+    node with a new id.
+
+    Arguments:
+     the_node: a node object to be copied
+     new_id: string
+
+    """
+    
+    from copy import deepcopy
+    from ..core.Node import Node
+    from ..core.Edge import Edge
+
+    node_locations = the_node._network.get_node_locations()
+    existing_ids = node_locations.keys()
+
+    if new_id not in existing_ids:
+        the_location = node_locations[the_node.id]
+        the_new_node = Node(new_id)
+        the_new_node._network = the_node._network
+        the_new_node._nodetype = the_node._nodetype
+        the_new_node.source = the_node.source
+        the_new_node.notes = deepcopy(the_node.notes)
+        the_edges_to_add = []
+        for the_edge in the_node._edges:
+            the_index = the_edge._nodes.index(the_node)
+            if the_index == 0:
+                the_nodes = [the_new_node, the_edge._nodes[1]]
+            if the_index == 1:
+                the_nodes = [the_edge._nodes[0], the_new_node]
+            the_edge = Edge(the_nodes, the_edge.weight)
+            the_edge._network = the_node._network
+            the_edges_to_add.append(the_edge)
+        the_new_node.add_edges(the_edges_to_add)
+        the_nodetype_id = node_locations[the_node.id]
+        the_node._network.nodetypes.get_by_id(the_nodetype_id).nodes.append(the_new_node)
+        the_node._network.edges.extend(the_edges_to_add)
+    return the_new_node
+
+
+def transfer_edges(the_new_node, the_old_node):
+    """ replace edge associations with a node.
+
+    Arguments:
+     the_new_node: a node object to be copied
+     the_edges: a list of edges
+
+    """
+    
+    from copy import deepcopy
+    from ..core.Node import Node
+    from ..core.Edge import Edge
+
+    the_edges = the_old_node.get_edges()
+
+    for the_edge in the_edges:
+        the_index = the_edge._nodes.index(the_old_node)
+        the_edge._nodes[the_index] = the_new_node
+        the_edge.update_id()
+        if the_edge.id not in [x.id for x in the_new_node._edges]:
+            the_new_node._edges.append(the_edge)
+            setattr(the_edge, '_network', the_new_node._network)
+            if the_edge not in the_edge._network.edges:
+                the_edge._network.edges.append(the_edge)
+        else:
+            # then this is a duplicate
+            the_edge._network = None
+            if the_edge in the_old_node._network.edges:
+                the_old_node._network.edges.remove(the_edge)
+                
+            
+        # there's a faster way to do this but leave it for now
+
+    the_old_node.remove_edges(the_edges)
+
+        
+def merge_networks_by_node(the_first_network, the_second_network, new_network_id, **kwargs):
+    """ Merges two networks based on node id's.
+
+    Arguments:
+     the_first_network
+     the_second_network
+     new_network_id
+
+    kwargs:
+    # merge_type: asymmetric or symmetric
+     verbose
+
+    """
+    from ..core.Node import Node
+    from ..core.Edge import Edge
+    from ..core.Network import Network
+    from ..core.NodeType import NodeType
+    from copy import deepcopy
+
+    if 'verbose' in kwargs:
+        verbose = kwargs['verbose']
+    else:
+        verbose = False
+
+    the_network = Network(new_network_id)
+    the_network_1_node_locations = the_first_network.get_node_locations()
+    the_network_2_node_locations = the_second_network.get_node_locations()
+
+    the_nodes_to_add = list(set(the_network_1_node_locations.keys() + the_network_2_node_locations.keys()))
+
+    if verbose:
+        print "Creating the nodes..."
+
+    the_nodetype = the_network.nodetypes[0]
+    the_nodes_to_add.sort()
+    the_nodetype.add_nodes(the_nodes_to_add)
+
+    for the_node in the_nodetype.nodes:
+        if the_node.id in the_network_1_node_locations.keys():
+            the_old_node = the_first_network.nodetypes.get_by_id(the_network_1_node_locations[the_node.id]).nodes.get_by_id(the_node.id)
+            the_node._nodetype = the_old_node._nodetype
+            the_node.source = the_old_node.source
+            the_node.notes = deepcopy(the_old_node.notes)
+            # if merge_type == 'symmetric':
+        if the_node.id in the_network_2_node_locations.keys():
+            # Give priority to data from the first network
+            the_old_node = the_second_network.nodetypes.get_by_id(the_network_2_node_locations[the_node.id]).nodes.get_by_id(the_node.id)
+            if the_node.id not in the_network_1_node_locations.keys():
+                the_node._nodetype = the_old_node._nodetype
+                the_node.source = the_old_node.source
+                the_node.notes = deepcopy(the_old_node.notes)  
+            else:
+                for the_key in the_old_node.notes.keys():
+                    if the_key not in the_node.notes:
+                        the_node.notes[the_key] = deepcopy(the_old_node.notes[the_key])
+
+    if verbose:
+        print "     ... the nodes are created."
+        print "Linking the nodes, this may take a while..."
+
+
+    # here we prioritize edges in the first network for the purpose of weights and notes
+    # is is assumed there is no redundancy in the edge ids
+    the_edges_to_add = [x for x in the_first_network.edges]
+    the_first_id = [x._nodes[0].id + '_' + x._nodes[1].id for x in the_first_network.edges]
+    the_second_id = [x._nodes[1].id + '_' + x._nodes[0].id for x in the_first_network.edges]
+    for the_edge in the_second_network.edges:
+        if the_edge.id not in the_first_id:
+            if the_edge.id not in the_second_id:
+                the_edges_to_add.append(the_edge)
+
+    the_first_nodes_to_link = [the_nodetype.nodes.get_by_id(x._nodes[0].id) for x in the_edges_to_add]
+    the_second_nodes_to_link = [the_nodetype.nodes.get_by_id(x._nodes[1].id) for x in the_edges_to_add]
+    the_node_pair_list = [[the_first_nodes_to_link[i], the_second_nodes_to_link[i]] for i in range(0, len(the_edges_to_add))]
+    the_weights = [x.weight for x in the_edges_to_add]
+    the_notes = [deepcopy(x.notes) for x in the_edges_to_add]
+    
+    the_edges = the_network.connect_node_pair_set(the_node_pair_list, the_weight_list = the_weights)
+    
+    for i, the_edge in enumerate(the_edges):
+        the_edge.notes = the_notes[i]
+
+    if verbose:
+        print "Completed testing %s node pairs" %(str(len(the_edges)))      
+
+    return the_network

@@ -36,6 +36,9 @@ class Node(Object):
     def set_nodetype(self, the_new_nodetype):
         setattr(self, '_nodetype', the_new_nodetype)
 
+    def get_nodetype(self):
+        return self._nodetype
+
     def get_edges(self):
         the_edge_list = [x for x in self._edges]
         return the_edge_list

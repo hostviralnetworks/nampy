@@ -47,12 +47,20 @@ def prince(the_network, **kwargs):
         print("Convert to monopartite network first.")
         continue_flag = False
         
-        
     if continue_flag:
-        the_dim = len(the_network.nodetypes[0].nodes)
 
         # Make sure the matrix is updated
         the_network.update()
+        # Remove orphan nodes, these will cause issues
+        # in the calculation
+        orphan_node_list = [x for x in the_network.nodetypes[0].nodes if (len(x._edges) == 0)]
+        if len(orphan_node_list) > 0:
+            # Might want to copy the network rather than modifying in place here
+            print 'Warning, there are orphan nodes present in the network that will cause PRINCE to crash, removing...'
+            the_network.nodetypes[0].remove_nodes(orphan_node_list)
+            the_network.update()
+            
+        the_dim = len(the_network.nodetypes[0].nodes)
         the_matrix = the_network.matrix
 
         if 'alpha' in kwargs: 
@@ -84,6 +92,7 @@ def prince(the_network, **kwargs):
         the_norm = sqrt(diagonal * diagonal.transpose())
 
         # Better to perform computations on dense
+        # Note orphan nodes can cause an issue
         w_prime = the_matrix.todense() / the_norm
         if verbose:
             print "W' done."
@@ -95,7 +104,8 @@ def prince(the_network, **kwargs):
         initial_source_dict = {}
         for i, the_node in enumerate(the_network.nodetypes[0].nodes):
             # Back this up in case there are permutations
-            initial_source_dict[the_node.id] = the_node.source        
+            # Force these values to float in case ints were used
+            initial_source_dict[the_node.id] = float(the_node.source)        
             ft1[i] = the_node.source
             y[i] = ft1[i] * (1.0 - alpha)
         if verbose:
@@ -104,7 +114,7 @@ def prince(the_network, **kwargs):
         # now compute the propagation...
         ft = zeros((the_dim, 1))
         continue_propagation = True 
-
+        
         while continue_propagation:
             ft = alpha * dot(w_prime,ft1) + y
             if (abs(ft - ft1)).sum() < l1norm_cutoff:

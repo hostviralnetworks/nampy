@@ -26,5 +26,5 @@ class Edge(Object):
         self.id = node_pair_list[0].id + '_' + node_pair_list[1].id
         self._network.edges._generate_index()
 
-
-        
+    def get_nodepairs(self):
+        return self._nodes

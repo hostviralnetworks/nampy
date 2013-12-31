@@ -165,6 +165,8 @@ def duplicate_node(the_node, new_id):
         the_nodetype_id = node_locations[the_node.id]
         the_node._network.nodetypes.get_by_id(the_nodetype_id).nodes.append(the_new_node)
         the_node._network.edges.extend(the_edges_to_add)
+        # Do we really need to update here?
+        the_node._network.update()
     return the_new_node
 
 

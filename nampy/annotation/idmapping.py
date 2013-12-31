@@ -255,6 +255,11 @@ def get_more_node_ids(the_network, **kwargs):
         print("e.g. if you are using pip, did you 'pip install bioservices'?")
         continue_flag = False
 
+    the_node_locations = the_network.get_node_locations()
+    if len(the_node_locations) == 0:
+        print 'The network has no nodes, exiting...'
+        continue_flag = False
+
     if 'node_id_type' in kwargs:
         node_id_type = kwargs['node_id_type'] 
     else:

@@ -71,6 +71,7 @@ class NodeType(Object):
                 edges_to_remove.add(the_edge)
             setattr(the_node, '_network', None)
             setattr(the_node, '_nodetype', None)
+        # This will update the indices but won't update the matrix
         self._network.remove_edges(edges_to_remove)
         self.nodes.remove_subset(the_node_list)
             

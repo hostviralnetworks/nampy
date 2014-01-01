@@ -171,7 +171,7 @@ def duplicate_node(the_node, new_id):
 
 
 def transfer_edges(the_new_node, the_old_node):
-    """ replace edge associations with a node.
+    """ move edge associations to another node.
 
     Arguments:
      the_new_node: a node object to be copied
@@ -197,15 +197,71 @@ def transfer_edges(the_new_node, the_old_node):
         else:
             # then this is a duplicate
             the_edge._network = None
+            # remove the duplicate from the network
             if the_edge in the_old_node._network.edges:
                 the_old_node._network.edges.remove(the_edge)
-                
             
-        # there's a faster way to do this but leave it for now
-
+    # remove the edges from the old node
     the_old_node.remove_edges(the_edges)
 
-        
+
+def merge_nodes(the_node_1, the_node_2):
+    """ Merge two nodes and remove the second
+    from the network
+
+    Arguments:
+     the_first_node: 'dominant' node
+     the_second_node: node to be eliminated
+    
+
+    """
+    continue_flag = True
+
+    if the_node_1.get_network() != the_node_1.get_network():
+        confinue_flag = False
+        print 'Both nodes must belong to the same network, exiting...'
+
+    if continue_flag:
+        transfer_edges(the_node_1, the_node_2)
+        the_node_1.notes = merge_notes(the_node_1, the_node_2)
+        the_network = the_node_2.get_network()
+        the_node_location_dict = the_network.get_node_locations()
+        the_nodetype_id = the_node_location_dict[the_node_2.id]
+        the_network.nodetypes.get_by_id(the_nodetype_id).remove_nodes([the_node_2])
+
+    return the_node_1
+
+
+def merge_notes(the_object_1, the_object_2):
+    """
+    """
+    from copy import deepcopy
+    continue_flag = True
+    merge_notes = {}
+    if ('notes' not in dir(the_object_1)) | ('notes' not in dir(the_object_2)):
+        print 'Both objects must have a notes attribute, exiting...'
+        continue_flag = False
+    if continue_flag:
+        notes_1 = the_object_1.notes
+        notes_2 = the_object_2.notes
+        all_keys = list(set(notes_1.keys() + notes_2.keys()))
+        for the_key in all_keys:
+            combined_data = []
+            if the_key in notes_1.keys():
+                if type(notes_1[the_key]) == list:
+                    combined_data += deepcopy(notes_1[the_key])
+                else:
+                    combined_data += [deepcopy(notes_1[the_key])]
+            if the_key in notes_2.keys():
+                if type(notes_2[the_key]) == list:
+                    combined_data += deepcopy(notes_2[the_key])
+                else:
+                    combined_data += [deepcopy(notes_2[the_key])]
+            merge_notes[the_key] = list(set(combined_data))
+
+    return merge_notes
+
+
 def merge_networks_by_node(the_first_network, the_second_network, new_network_id, **kwargs):
     """ Merges two networks based on node id's.
 

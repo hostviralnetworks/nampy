@@ -67,6 +67,11 @@ class Network(Object):
 
     def update(self):
         self.nodetypes._generate_index()
+        for the_nodetype in self.nodetypes:
+            the_nodetype.nodes._generate_index()
+        for the_edge in self.edges:
+            node_pair_list = the_edge._nodes
+            the_edge.id = node_pair_list[0].id + '_' + node_pair_list[1].id
         self.edges._generate_index()
         all_node_ids = []
         for the_nodetype in self.nodetypes:

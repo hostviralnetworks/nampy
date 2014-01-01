@@ -43,4 +43,5 @@ class Node(Object):
         the_edge_list = [x for x in self._edges]
         return the_edge_list
             
-        
+    def get_network(self):
+        return self._network       

@@ -14,7 +14,7 @@ class Edge(Object):
 
         """
         if ((type(node_pair_list[0]) == Node) & (type(node_pair_list[1]) == Node)):
-            id = node_pair_list[0].id + '_' + node_pair_list[1].id
+            id = node_pair_list[0].id + '___' + node_pair_list[1].id
             Object.__init__(self, id)
             self._nodes = DictList(node_pair_list)
             self.weight = the_weight
@@ -23,8 +23,8 @@ class Edge(Object):
 
     def update_id(self):
         node_pair_list = self._nodes
-        self.id = node_pair_list[0].id + '_' + node_pair_list[1].id
+        self.id = node_pair_list[0].id + '___' + node_pair_list[1].id
         self._network.edges._generate_index()
 
-    def get_nodepairs(self):
+    def get_node_pair(self):
         return self._nodes

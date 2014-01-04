@@ -42,6 +42,18 @@ class Node(Object):
     def get_edges(self):
         the_edge_list = [x for x in self._edges]
         return the_edge_list
+
+    def get_connected_nodes(self):
+        the_edge_list = self.get_edges()
+        the_connected_nodes = set([])
+        for the_edge in the_edge_list:
+            the_node_pair = the_edge.get_node_pair()
+            the_index = the_node_pair.index(self)
+            if the_index == 1:
+                the_connected_nodes.add(the_node_pair[0])
+            else:
+                the_connected_nodes.add(the_node_pair[1])
+        return the_connected_nodes
             
     def get_network(self):
         return self._network       

@@ -71,7 +71,7 @@ class Network(Object):
             the_nodetype.nodes._generate_index()
         for the_edge in self.edges:
             node_pair_list = the_edge._nodes
-            the_edge.id = node_pair_list[0].id + '_' + node_pair_list[1].id
+            the_edge.id = node_pair_list[0].id + '___' + node_pair_list[1].id
         self.edges._generate_index()
         all_node_ids = []
         for the_nodetype in self.nodetypes:
@@ -115,8 +115,7 @@ class Network(Object):
                 for the_nodetype_id in nodetype_to_node_dict.keys():
                     the_nodetype = self.add_nodetype(the_nodetype_id)
                     the_nodes = nodetype_to_node_dict[the_nodetype_id]
-                    for the_node in the_nodes:
-                        old_nodetype.nodes.remove(the_node)
+                    old_nodetype.nodes.remove_subset(the_nodes)
                     the_nodetype.add_nodes(the_nodes)
                 if len(old_nodetype.nodes) == 0:
                     setattr(old_nodetype, '_network', None)

@@ -342,3 +342,52 @@ def read_table_file_to_dict(filename, **kwargs):
                 return_dict[the_line[keyindex]][subfield_key] = cur_value
             
     return return_dict
+
+
+def write_dict_to_textfile(the_filename, the_output_dict, top_key):
+    """ Write a dict to a tab-delimited textfile.
+
+    Arguments:
+     the_filename: file to write to
+     the_output_dict: the dict to write
+     top_key: string to describe the top key / id in the table.
+
+    """
+    # First we convert to a table to align
+    # the columns
+    # First scan through and get all the keys
+    all_entries = the_output_dict.keys()
+    all_entries.sort()    
+
+    col_names = set([])
+    for cur_entry in the_output_dict.keys():
+        col_names.update(set(the_output_dict[cur_entry].keys()))
+    col_names = [x for x in col_names]
+    col_names.sort()
+
+    the_table = []
+    the_table.append([])
+    the_table[0].append(top_key)
+    the_table[0].extend(col_names)
+    for row_index, entry in enumerate(all_entries):
+        the_table.append([])
+        target_row=[]
+        target_row.append(entry)
+        for target_col_index, cur_col in enumerate(col_names):
+            try:
+                cur_value = the_output_dict[entry][cur_col]
+            except:
+                cur_value=''
+            target_row.append(cur_value)
+        the_table[row_index + 1] = target_row
+    
+    # Now write the table
+    fp = file(the_filename, 'w')
+    for row in the_table:
+        for colindex, entry in enumerate(row):
+            fp.writelines("%s" % entry)
+            if colindex == (len(row)-1):
+                fp.writelines("\n")
+            else:
+                fp.writelines("\t")        
+    fp.close()

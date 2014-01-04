@@ -491,7 +491,7 @@ def retrieve_annotation(id_list, **kwargs):
             try:
                 result = Entrez.read(request)
             except RuntimeError as e:
-                #FIXME: How generate NAs instead of causing an error with invalid IDs?
+                #TODO: How generate NAs instead of causing an error with invalid IDs?
                 print "An error occurred while retrieving the annotations."
                 print "The error returned was %s" % e
                 sys.exit(-1)

@@ -1,4 +1,6 @@
-
+from ..core.shared_functions import test_kwarg
+from ..core.parameters import edge_id_separator
+    
 def add_source(the_network, source_dict, **kwargs):
     """ Script to add sources to a network for
     network analysis from a dictionary
@@ -170,12 +172,18 @@ def duplicate_node(the_node, new_id):
     return the_new_node
 
 
-def transfer_edges(the_new_node, the_old_node):
-    """ move edge associations to another node.
+def transfer_edges(the_new_node, the_old_node, **kwargs):
+    """ Move edge associations to another node.
 
     Arguments:
      the_new_node: a node object to be copied
-     the_edges: a list of edges
+     the_edges: the list of edges
+
+    kwargs:
+     verbose: inform if there are problems during edge transfer
+     duplicate_target_id_behavior: if a duplicate target edge id is found in
+                                   the target node 'delete' or 'keep' the old
+                                   edge. 
 
     """
     
@@ -183,26 +191,66 @@ def transfer_edges(the_new_node, the_old_node):
     from ..core.Node import Node
     from ..core.Edge import Edge
 
+    verbose = test_kwarg('verbose', kwargs, [True, False])
+    # By default we will remove all old edge associations
+    duplicate_target_id_behavior = test_kwarg('duplicate_target_id_behavior', kwargs, ['delete', 'keep'])
+    
     the_edges = the_old_node.get_edges()
-
+        
+    the_edges_to_remove_from_old_node = []
     for the_edge in the_edges:
-        the_index = the_edge._nodes.index(the_old_node)
+        # Could make these steps
+        # into an Edge method, but this does
+        # not make sense to stand alone
+        the_node_pair = the_edge.get_node_pair()
+        the_index = the_node_pair.index(the_old_node)
         the_edge._nodes[the_index] = the_new_node
         the_edge.update_id()
-        if the_edge.id not in [x.id for x in the_new_node._edges]:
-            the_new_node._edges.append(the_edge)
-            setattr(the_edge, '_network', the_new_node._network)
+        # Now we add this edge to the new node
+        # First we make sure an edge with the same id
+        # doesn't already exist
+        the_node_pair = the_edge.get_node_pair()
+        the_first_id = the_node_pair[0].id + edge_id_separator + the_node_pair[1].id
+        the_second_id = the_node_pair[1].id + edge_id_separator + the_node_pair[0].id
+        the_edges = the_new_node.get_edges()
+        the_edges_ids = [x.id for x in the_edges]
+        if ((the_first_id not in the_edges_ids) & (the_second_id not in the_edges_ids)):
+            the_new_node.add_edges([the_edge])
+            # Also update network references
+            setattr(the_edge, '_network', the_new_node.get_network())
             if the_edge not in the_edge._network.edges:
                 the_edge._network.edges.append(the_edge)
+            the_edges_to_remove_from_old_node.append(the_edge)
         else:
-            # then this is a duplicate
-            the_edge._network = None
-            # remove the duplicate from the network
-            if the_edge in the_old_node._network.edges:
-                the_old_node._network.edges.remove(the_edge)
+            # Then this could be a duplicate id that we 
+            # should delete, but before deleting make sure it is not
+            # the same edge already present in the_new_node
+            if the_edge not in the_edges:
+                if the_first_id in the_edges_ids:
+                    dupe_id = the_first_id
+                elif the_second_id in the_edges_ids:
+                    dupe_id = the_second_id  
+                if verbose:
+                    print 'Warning, edge transfer failed. Edge id %s already exists for target node.' % dupe_id
+                # If this is the case, perform the selected fail behavior
+                if duplicate_target_id_behavior == 'delete':
+                    setattr(the_edge, '_network', None)
+                    # Remove the duplicate from the network
+                    if the_edge in the_old_node._network.edges:
+                        the_old_node._network.edges.remove(the_edge)
+                    the_edges_to_remove_from_old_node.append(the_edge)
+                else:
+                    # 'keep' is the other option,
+                    # we should revert the edge
+                    # in this case
+                    the_node_pair = the_edge.get_node_pair()
+                    # This should still be in memory
+                    # the_index = the_node_pair.index(the_old_node)
+                    the_edge._nodes[the_index] = the_old_node
+                    the_edge.update_id()
             
     # remove the edges from the old node
-    the_old_node.remove_edges(the_edges)
+    the_old_node.remove_edges(the_edges_to_remove_from_old_node)
 
 
 def merge_nodes(the_node_1, the_node_2):
@@ -281,10 +329,7 @@ def merge_networks_by_node(the_first_network, the_second_network, new_network_id
     from ..core.NodeType import NodeType
     from copy import deepcopy
 
-    if 'verbose' in kwargs:
-        verbose = kwargs['verbose']
-    else:
-        verbose = False
+    verbose = test_kwarg('verbose', kwargs, [False, True])
 
     the_network = Network(new_network_id)
     the_network_1_node_locations = the_first_network.get_node_locations()

@@ -5,7 +5,8 @@ from .Object import Object
 from .Edge import Edge
 from .NodeType import NodeType
 from .DictList import DictList
-#
+from .parameters import edge_id_separator
+
 
 class Network(Object):
     """
@@ -71,7 +72,7 @@ class Network(Object):
             the_nodetype.nodes._generate_index()
         for the_edge in self.edges:
             node_pair_list = the_edge._nodes
-            the_edge.id = node_pair_list[0].id + '___' + node_pair_list[1].id
+            the_edge.id = node_pair_list[0].id + edge_id_separator + node_pair_list[1].id
         self.edges._generate_index()
         all_node_ids = []
         for the_nodetype in self.nodetypes:

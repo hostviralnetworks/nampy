@@ -3,7 +3,7 @@ import nampy
 from nampy.io import networkio
 from nampy.annotation import idmapping
 from nampy.manipulation import manipulation
-from nampy.propagation import prince
+from nampy.monopartiteanalysis import prince
 
 # Let's work with a version of HumanNet
 # Lee, I., Blom, U. M., Wang, P. I., Shim, J. E., & Marcotte, E. M. (2011). 

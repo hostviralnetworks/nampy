@@ -1,7 +1,7 @@
 # A script to illustrate working with recon_1 and reporter interactions
 import nampy
 from nampy.io import networkio
-from nampy.cobra import reporternodes
+from nampy.multipartiteanalysis import reporternodes
 
 # Let's work with recon 1 from:
 # Duarte, N. C., Becker, S. a, Jamshidi, N., Thiele, I., Mo, M. L., Vo, T. D., … Palsson, B. Ø. (2007). 

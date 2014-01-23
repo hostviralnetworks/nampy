@@ -198,6 +198,11 @@ def transfer_edges(the_new_node, the_old_node, **kwargs):
     the_edges = the_old_node.get_edges()
         
     the_edges_to_remove_from_old_node = []
+
+    #    if the_new_node.id == '3107':
+    #    import pdb
+    #    pdb.set_trace()
+    
     for the_edge in the_edges:
         # Could make these steps
         # into an Edge method, but this does
@@ -212,9 +217,9 @@ def transfer_edges(the_new_node, the_old_node, **kwargs):
         the_node_pair = the_edge.get_node_pair()
         the_first_id = the_node_pair[0].id + edge_id_separator + the_node_pair[1].id
         the_second_id = the_node_pair[1].id + edge_id_separator + the_node_pair[0].id
-        the_edges = the_new_node.get_edges()
-        the_edges_ids = [x.id for x in the_edges]
-        if ((the_first_id not in the_edges_ids) & (the_second_id not in the_edges_ids)):
+        the_new_node_edges = the_new_node.get_edges()
+        the_new_node_edges_ids = [x.id for x in the_new_node_edges]
+        if ((the_first_id not in the_new_node_edges_ids) & (the_second_id not in the_new_node_edges_ids)):
             the_new_node.add_edges([the_edge])
             # Also update network references
             setattr(the_edge, '_network', the_new_node.get_network())
@@ -225,10 +230,10 @@ def transfer_edges(the_new_node, the_old_node, **kwargs):
             # Then this could be a duplicate id that we 
             # should delete, but before deleting make sure it is not
             # the same edge already present in the_new_node
-            if the_edge not in the_edges:
-                if the_first_id in the_edges_ids:
+            if the_edge not in the_new_node_edges:
+                if the_first_id in the_new_node_edges_ids:
                     dupe_id = the_first_id
-                elif the_second_id in the_edges_ids:
+                elif the_second_id in the_new_node_edges_ids:
                     dupe_id = the_second_id  
                 if verbose:
                     print 'Warning, edge transfer failed. Edge id %s already exists for target node.' % dupe_id
@@ -248,6 +253,28 @@ def transfer_edges(the_new_node, the_old_node, **kwargs):
                     # the_index = the_node_pair.index(the_old_node)
                     the_edge._nodes[the_index] = the_old_node
                     the_edge.update_id()
+            # If the edge is already in the new node, then
+            # go ahead and perform the default. 
+            else:
+                if verbose:
+                    print 'Warning, edge transfer failed. Edge id %s already exists for target node.' % the_edge.id
+                # If this is the case, perform the selected fail behavior
+                if duplicate_target_id_behavior == 'delete':
+                    setattr(the_edge, '_network', None)
+                    # Remove the duplicate from the network
+                    if the_edge in the_old_node._network.edges:
+                        the_old_node._network.edges.remove(the_edge)
+                    the_edges_to_remove_from_old_node.append(the_edge)
+                else:
+                    # 'keep' is the other option,
+                    # we should revert the edge
+                    # in this case
+                    the_node_pair = the_edge.get_node_pair()
+                    # This should still be in memory
+                    # the_index = the_node_pair.index(the_old_node)
+                    the_edge._nodes[the_index] = the_old_node
+                    the_edge.update_id()                
+        
             
     # remove the edges from the old node
     the_old_node.remove_edges(the_edges_to_remove_from_old_node)

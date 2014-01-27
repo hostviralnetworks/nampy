@@ -240,6 +240,7 @@ def create_source_dict_from_textfile(source_file, **kwargs):
         print('Cannot load the source file.  Exiting...')
         continue_flag = False
 
+    source_dict = {}
     if continue_flag:
         source_dict = {}
         for the_entry in the_list:

@@ -12,7 +12,7 @@ setup(
     #install_requires = ['myitem>=0.1'],
     extras_require = {},
 
-    package_data = {'': ['*.txt', '*.html','LICENSE','README','data/*','examples/*py']},
+    package_data = {'': ['*.txt', '*.html','LICENSE','README','data/*','examples/*py','rfiles/*']},
 
     author = "Brian J Schmidt",
     author_email = "brianjschmidt@gmail.com",

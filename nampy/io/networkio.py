@@ -8,16 +8,34 @@ saved_node_attribute_list = ['notes', 'annotation', 'source', '_nodetype']
 saved_edge_attribute_list = ['weight', 'notes', 'annotation']
 saved_network_attribute_list = ['notes', 'annotation']
 
-def is_float_try(str):
+def is_float_try(the_string):
     """ Simple test to check if a string can be represented as a 
     floating point.
 
     """
     try:
-        float(str)
+        float(the_string)
         return True
     except ValueError:
         return False
+
+    
+def string_to_list(the_string, force_to_float = True, sep_char =  ", "):
+    """ Convert strings read from file to Python lists
+    """
+    the_string = the_string.lstrip("[")
+    the_string = the_string.rstrip("]")
+    the_list = the_string.split(sep_char)
+    if the_list[0].startswith("'") & the_list[0].endswith("'"):
+        the_list = [x.lstrip("'").rstrip("'") for x in the_list]
+    elif the_list[0].startswith("\'") & the_list[0].endswith("\'"):
+        the_list = [x.lstrip("\'").rstrip("\'") for x in the_list]    
+    for index, the_value in enumerate(the_list):
+        if is_float_try(the_value) & (force_to_float == True):
+            the_list[index] = float(the_value)
+        else:
+            the_list[index] = the_value
+    return the_list    
 
 
 def pickle_network(the_network, the_filename, path = ""):
@@ -257,20 +275,24 @@ def create_source_dict_from_textfile(source_file, **kwargs):
 
 
 def read_table_file_to_dict(filename, **kwargs):
-    """simple function to extract key:value from an Unix /
-    tab-delineated file.  This is useful for getting node / edge
-    attributes stored in text format.
+    """simple function to extract a dict of dicts as
+    {top_key:{key: value}} from an 
+    Unix / tab-delineated file.  This is useful for getting 
+    node / edge attributes stored in text format.  The first row
+    is assumed to be header information.
 
     Arguments:
      filename
 
     kwargs:
-     top_key: if left blank, it is assumed the table lacks headers (e.g. the
-              first line is just data)
+     top_key: if left blank, the first entry in the first line is taken to
+      be the highest level key for the 
      subfield_key_list: a list of fields to include.  Leave blank if all
                         fields are to be included.
-     commentchar: Lines starting with this character/string
+     comment_char: Lines starting with this character/string
                   will be ignored
+     sep_char: Separation character
+     interpret_lists: Boolean
     
     """
 
@@ -284,54 +306,72 @@ def read_table_file_to_dict(filename, **kwargs):
     else:
         subfield_key_list = []
 
-    if 'commentchar' in kwargs:
-        commentchar = kwargs['commentchar']
+    if 'comment_char' in kwargs:
+        comment_char = kwargs['comment_char']
     else:
-        commentchar = ""
+        comment_char = ""
 
+    if 'sep_char' in kwargs:
+        sep_char = kwargs['sep_char']
+    else:
+        sep_char = "\t"
+        
     force_to_float = test_kwarg('force_to_float', kwargs, [True, False])
+    interpret_lists = test_kwarg('interpret_lists', kwargs, [True, False])
+
     
     fp = open(filename, 'rU')
     the_list = fp.readlines()
     
     the_list = [x.rstrip("\n") for x in the_list]
     
-    if (len(commentchar) > 0):
+    if (len(comment_char) > 0):
         found_first = False
         while not(found_first):
-            if the_list[0].startswith(commentchar):
+            if the_list[0].startswith(comment_char):
                 the_list.pop(0)
             else:
                 found_first = True
                 
     if top_key == '':
-        firstline = the_list[0].split("\t")
-        firstline = [str(i) for i, x in enumerate(firstline)]
-        keyindex = 0
+        firstline = the_list[0].split(sep_char)
+        #firstline = [str(i) for i, x in enumerate(firstline)]
+        key_index = 0
+        top_key = firstline[0]
     else:
-        firstline = the_list[0].split("\t")
-        keyindex = firstline.index(top_key)        
+        firstline = the_list[0].split(sep_char)
+        key_index = firstline.index(top_key)     
 
     if (len(subfield_key_list) > 0):
         valueindices = [firstline.index(subfield_key) for subfield_key in subfield_key_list]
     else:
-        valueindices = [x for x in range(0, len(firstline)) if (x != keyindex)]
+        valueindices = [x for x in range(0, len(firstline)) if (x != key_index)]
         subfield_key_list = [firstline[x] for x in valueindices]
 
-    if top_key != '':
-        the_list.pop(0)
+    #if top_key != '':
+    #    the_list.pop(0)
+    the_list.pop(0)
     
     return_dict={}
     for the_line in the_list:
-        if ((len(commentchar) == 0) | (not(the_line.startswith(commentchar)))):
-            the_line = the_line.split("\t")
-            return_dict[the_line[keyindex]] = {}
+        if ((len(comment_char) == 0) | (not(the_line.startswith(comment_char)))):
+            the_line = the_line.split(sep_char)
+            return_dict[the_line[key_index]] = {}
             for index, subfield_key in enumerate(subfield_key_list):
                 cur_value = the_line[valueindices[index]]
-                if force_to_float:
-                    if is_float_try(cur_value):
+                if (index != key_index):
+                    if is_float_try(cur_value) & (force_to_float == True):
                         cur_value = float(cur_value)
-                return_dict[the_line[keyindex]][subfield_key] = cur_value
+                    else:
+                        if ((cur_value.startswith('"')) & (cur_value.endswith(('"')))):
+                            # The double-quotes are sometimes inserted before and after long string/lists
+                            # and aren't needed
+                            cur_value = cur_value.lstrip('"').rstrip('"')
+                        if interpret_lists:
+                            if type(cur_value) != list:
+                                if ((cur_value.startswith('[')) & (cur_value.endswith((']')))):
+                                    cur_value = string_to_list(cur_value, force_to_float = force_to_float)
+                return_dict[the_line[key_index]][subfield_key] = cur_value
             
     return return_dict
 

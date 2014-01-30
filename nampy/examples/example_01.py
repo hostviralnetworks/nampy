@@ -1,5 +1,6 @@
 # A script to illustrate nampy and run network propagation
 import nampy
+import platform
 from nampy.io import networkio
 from nampy.annotation import idmapping
 from nampy.manipulation import manipulation
@@ -9,7 +10,13 @@ from nampy.monopartiteanalysis import prince
 # Lee, I., Blom, U. M., Wang, P. I., Shim, J. E., & Marcotte, E. M. (2011). 
 # Prioritizing candidate disease genes by network-based boosting of genome-wide association data. 
 # Genome research, 21(7), 1109–21. doi:10.1101/gr.118992.110
-data_dir = nampy.__path__[0] + '/data/'
+if platform.system() == 'Windows':
+    data_dir = nampy.__path__[0] + '\\data\\'
+else:
+    data_dir = nampy.__path__[0] + '/data/'
+import pdb
+
+
 network_file = data_dir + "HumanNet_v1_join_networkonly.txt"
 humannet = networkio.create_network_model_from_textfile('humannet', network_file, verbose = True)
 
@@ -48,7 +55,18 @@ print(counter)
 
 humannet, unmatched_ids_dict = manipulation.add_source(humannet, apms_source_dict, match_key_type = 'Entrez Gene (GeneID)')
 
-# Just 10 permutations done here for demonstration purposes, to establish statistics you will need more
-the_result, the_permutations = prince.prince(humannet, n_permutations = 10, verbose = True)
+# Just 100 permutations done here for demonstration purposes, to establish more reliable statistics you will need more
+the_result, the_permutations = prince.prince(humannet, n_permutations = 100, verbose = True)
 
-# The propagation scores are stored in the_result
+# The propagation scores are stored in the_result.  Here is how to save/load
+# prince.save_prince_result(humannet, the_result, the_permutations, filename)
+# the_result, the_permutations = prince.load_prince_result(humannet, filename)
+
+from nampy.statistics import networkstatistics
+ttp_dict, side_dict = networkstatistics.get_pvalue_from_scores(the_result, the_permutations, verbose = True)
+
+otp_dict = networkstatistics.ttp_to_otp(ttp_dict, side_dict)
+
+# This is the dict of p-values from the propagations...
+otp_dict_corrected = networkstatistics.mtcorrect(otp_dict, method = '"BH"')
+ 

@@ -1,7 +1,7 @@
 # A script to illustrate working with recon_1 and reporter interactions
 import nampy
 from nampy.io import networkio
-from nampy.multipartiteanalysis import reporternodes
+from nampy.multipartiteanalysis import reporterfeatures
 from nampy.statistics import networkstatistics
 
 
@@ -79,8 +79,8 @@ for the_transcript in the_network.nodetypes.get_by_id("gene").nodes:
         the_transcript_pval_dict[the_transcript.id] = the_model_gene_pval_dict[the_gene_id]
         
 # Now we map to model reactions and then run reporter metabolites
-hyperedge_score_dict = reporternodes.evaluate_reaction_pvalues(the_network, the_transcript_pval_dict)
-the_reporter_dict = reporternodes.calculate_reporter_scores(the_network, hyperedge_score_dict['p'], 'metabolite', 'reaction', number_of_randomizations = 10000)
+hyperedge_score_dict = reporterfeatures.evaluate_reaction_pvalues(the_network, the_transcript_pval_dict)
+the_reporter_dict = reporterfeatures.calculate_reporter_scores(the_network, hyperedge_score_dict['p'], 'metabolite', 'reaction', number_of_randomizations = 10000)
 
 
 # We can prepare summar calculations to

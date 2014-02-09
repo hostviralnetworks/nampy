@@ -53,7 +53,7 @@ for the_key in apms_source_dict.keys():
         counter +=1
 print(counter)
 
-humannet, unmatched_ids_dict = manipulation.add_source(humannet, apms_source_dict, match_key_type = 'Entrez Gene (GeneID)')
+humannet, id_matching_dict = manipulation.add_source(humannet, apms_source_dict, match_key_type = 'Entrez Gene (GeneID)')
 
 # Just 100 permutations done here for demonstration purposes, to establish more reliable statistics you will need more
 the_result, the_permutations = prince.prince(humannet, n_permutations = 100, verbose = True)

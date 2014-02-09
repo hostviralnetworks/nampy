@@ -348,8 +348,6 @@ def read_table_file_to_dict(filename, **kwargs):
         valueindices = [x for x in range(0, len(firstline)) if (x != key_index)]
         subfield_key_list = [firstline[x] for x in valueindices]
 
-    #if top_key != '':
-    #    the_list.pop(0)
     the_list.pop(0)
     
     return_dict={}
@@ -359,14 +357,14 @@ def read_table_file_to_dict(filename, **kwargs):
             return_dict[the_line[key_index]] = {}
             for index, subfield_key in enumerate(subfield_key_list):
                 cur_value = the_line[valueindices[index]]
-                if (index != key_index):
-                    if is_float_try(cur_value) & (force_to_float == True):
-                        cur_value = float(cur_value)
-                    else:
-                        if ((cur_value.startswith('"')) & (cur_value.endswith(('"')))):
-                            # The double-quotes are sometimes inserted before and after long string/lists
-                            # and aren't needed
-                            cur_value = cur_value.lstrip('"').rstrip('"')
+                #if (index != key_index):
+                if is_float_try(cur_value) & (force_to_float == True):
+                    cur_value = float(cur_value)
+                else:
+                    if ((cur_value.startswith('"')) & (cur_value.endswith(('"')))):
+                        # The double-quotes are sometimes inserted before and after long string/lists
+                        # and aren't needed
+                        cur_value = cur_value.lstrip('"').rstrip('"')
                         if interpret_lists:
                             if type(cur_value) != list:
                                 if ((cur_value.startswith('[')) & (cur_value.endswith((']')))):

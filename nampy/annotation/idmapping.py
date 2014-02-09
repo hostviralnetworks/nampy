@@ -1,3 +1,5 @@
+from ..core.shared_functions import test_kwarg
+
 # There is a web page that gives the list of correct `database identifiers
 #  <http://www.uniprot.org/faq/28>
 
@@ -270,10 +272,7 @@ def get_more_node_ids(the_network, **kwargs):
     else:
         mapping_types = default_mapping_target_list
 
-    if 'verbose' in kwargs:
-        verbose = kwargs['verbose'] 
-    else:
-        verbose = True
+    verbose = test_kwarg('verbose', kwargs, [True, False])
 
     # Maximum number of items to
     # query at a time 
@@ -370,19 +369,18 @@ def get_more_source_dict_ids(source_dict, primary_key, **kwargs):
         from bioservices import UniProt
         u = UniProt(verbose=False)
     except:
-        print("No bioservices module installed or cannot connect, exiting...")
+        print("No BioServices module installed or cannot connect, exiting...")
         print("e.g. if you are using pip, did you 'pip install bioservices'?")
         continue_flag = False
+
+    verbose = test_kwarg('verbose', kwargs, [False, True])
 
     if 'node_id_type' in kwargs:
         node_id_type = kwargs['node_id_type'] 
     else:
         node_id_type = "Entrez Gene (GeneID)"
 
-    if 'verbose' in kwargs:
-        verbose = kwargs['verbose'] 
-    else:
-        verbose = True
+    verbose = test_kwarg('verbose', kwargs, [False, True])
 
     # Maximum number of items to
     # query at a time 
@@ -448,7 +446,7 @@ def retrieve_annotation(id_list, **kwargs):
     submit the data to NCBI) and esummary to retrieve the information. 
     Returns a list of dictionaries with the annotations.
 
-    credit: this module from biopython.org on Dec 14 2013
+    credit: this function based on code found on biopython.org on Dec 14 2013
 
     Arguments:
      id_list: a list of Entrez id's each as a string
@@ -467,16 +465,13 @@ def retrieve_annotation(id_list, **kwargs):
         print "A functional Biopython is needed for this function."
         print("e.g. if you are using pip, did you 'pip install biopython'?")
         continue_flag = False
-
+        
     if 'email' in kwargs:
         email = kwargs['email']
     else:
         email = ''
 
-    if 'verbose' in kwargs:
-        verbose = kwargs['verbose']
-    else:
-        verbose = False
+    verbose = test_kwarg('verbose', kwargs, [False, True])
 
     # limit to how many id's can be queried at once 
     max_query = 10000

@@ -13,4 +13,13 @@ Thiele, I., Swainston, N., Fleming, R. M. T., Hoppe, A., Sahoo, S., Aurich, M. K
 apms_factors:
 From published screens. Reference to clarify coming soon.
 
+GSE19392_IFNb18hr:
+Partial dataset from GSE19392, see:
+Shapira, S. D., Gat-Viks, I., Shum, B. O. V, Dricot, A., de Grace, M. M., Wu, L., … Hacohen, N. (2009). A physical and regulatory map of host-influenza interactions reveals pathways in H1N1 infection. Cell, 139(7), 1255–67. doi:10.1016/j.cell.2009.12.018
+
+HT_HG_U133A_na34_annot_abbrev_140204:
+Annotation file with probe : entrez gene mappings
+downloaded from Affymetrix (http://www.affymetrix.com)
+on Feb 4, 2014
+
 """

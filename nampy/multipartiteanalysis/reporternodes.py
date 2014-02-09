@@ -1,18 +1,27 @@
-
+from ..core.shared_functions import test_kwarg
 
 def evaluate_reaction_pvalues(the_network, expression_dict, **kwargs):
     """ pvalues for gene changes are combined
     to get reaction level changes
 
-    this function inspired by panalty evaluation in gim3e:
+    this function inspired by penalty evaluation in gim3e:
     Schmidt, B. J., Ebrahim, A., Metz, T. O., Adkins, J. N., Palsson, B. O., & Hyduke, D. R. (2013). 
-    GIM3E: condition-specific models of cellular metabolism developed from metabolomics 
-    and expression data. Bioinformatics, 29(22), 2900–2908.
+    Bioinformatics, 29(22), 2900–2908.
 
     Arguments:
      the_network: a nampy network from a COBRApy model, 
                   converted to multipartite
-     expression_dict: a dict of pvalues
+     expression_dict: {gene_id: {'p':the_p, 'dir': the_dir}}
+      'p' is a two-tailed p-value for change
+      'the_dir' is '+' or '-', not needed for reporter
+        metabolites but it is nice to have for
+        visualizing the impact on reactions
+
+     kwargs:
+      missing_genes: ['ignore_reaction' (default), 'no_unchanged']
+       How to handle missing genes.  Either ignore
+       the entire reaction if statistics for a gene are
+       missing or assume the gene is unchanged.
 
     Returns:
      penalites: a dict with reaction id's as keys
@@ -23,69 +32,67 @@ def evaluate_reaction_pvalues(the_network, expression_dict, **kwargs):
     """
     import re
     from copy import deepcopy
-    # # First we test for gene P/A calls.
-    # # Declare P/A based on cutoff
-    # gene_pa_dict = {}
-    # for cur_gene in expression_dict.keys():
-    #     if cur_gene in new_cobra_model.genes:
-    #         if expression_dict[cur_gene] > threshold:
-    #             gene_pa_dict[cur_gene] = 1
-    #         else:
-    #             gene_pa_dict[cur_gene] = 0
+    continue_flag = True
 
-    allowed_settings = ['no_change', 'ignore_reaction']
-    if 'missing_genes' in kwargs:
-        if kwargs['missing_genes'] in allowed_settings:
-            missing_genes = kwargs['missing_genes']
-            # ignore_reaction not yet implemented
-            missing_genes = allowed_settings[0]
-        else:
-            missing_genes = allowed_settings[0]
-    else:
-        missing_genes = allowed_settings[0]
+    missing_genes = test_kwarg('missing_genes', kwargs, ['ignore_reaction', 'no_change'])
 
-    # settings for reactions with missing gene_reaction_rules?
-    # seems only fair that we should ignore these reactions.
+    if ((len(the_network.nodetypes) == 1) & (the_network.nodetypes[0].id == 'monopartite')):
+        print("Convert to multipartite network first, exiting...")
+        continue_flag = False
+    elif 'reaction' not in [x.id for x in the_network.nodetypes]:
+        print("The network must have 'reaction' nodetypes to evaluate reaction p-values, exiting...")
+        continue_flag = False        
 
     reaction_pval_dict = {}
-    # We also keep a list to track if a reaction is inactivated
-    # due to GE data
-    reaction_inactivated = []
-    for test_reaction in the_network.nodetypes.get_by_id('reaction').nodes:
-        # Ignore reactions without known gene reaction relations.
-        # len(test_reaction.notes['gene_reaction_rule']) == 0:
-        # penalties[test_reaction.id] = 0
-        if (len(test_reaction.notes['gene_reaction_rule']) > 0) & (test_reaction.notes['gene_reaction_rule'] != 's0001'):
-            # Otherwise, we will have to evaluate the GRR
-            the_gene_reaction_rule = deepcopy(test_reaction.notes['gene_reaction_rule'])
-            reaction_gene_dict = {}
-            current_gene_list = []
-            for the_edge in test_reaction.get_edges():
-                the_node_pair = the_edge.get_node_pair()
-                the_index = the_node_pair.index(test_reaction)
-                if the_index == 1:
-                    if the_node_pair[0].get_nodetype() == 'gene':
-                        current_gene_list.append(the_node_pair[0])
-                else:
-                    if the_node_pair[1].get_nodetype() == 'gene':
-                        current_gene_list.append(the_node_pair[1])                    
-            
-            for the_gene in current_gene_list:
-                if the_gene.id in expression_dict:
-                    reaction_gene_dict[the_gene.id] = expression_dict[the_gene.id]
-                else:
-                    if missing_genes == 'no_change':
-                        reaction_gene_dict[the_gene.id] = 1.
+    reaction_dir_dict = {}
+    if continue_flag:
+        for test_reaction in the_network.nodetypes.get_by_id('reaction').nodes:
+            # Ignore reactions without known gene reaction relations and spontaneous reactions.
+            if (len(test_reaction.notes['gene_reaction_rule']) > 0) & (test_reaction.notes['gene_reaction_rule'] != 's0001'):
+                # Otherwise, we will have to evaluate the GRR
+                the_gene_reaction_rule = deepcopy(test_reaction.notes['gene_reaction_rule'])
+                reaction_gene_p_dict = {}
+                reaction_gene_dir_dict = {}
+                current_gene_list = []
+                for the_edge in test_reaction.get_edges():
+                    the_node_pair = the_edge.get_node_pair()
+                    the_index = the_node_pair.index(test_reaction)
+                    if the_index == 1:
+                        if the_node_pair[0].get_nodetype() == 'gene':
+                            current_gene_list.append(the_node_pair[0])
                     else:
-                        # not yet implemented
-                        reaction_gene_dict[the_gene.id] = 1.
+                        if the_node_pair[1].get_nodetype() == 'gene':
+                            current_gene_list.append(the_node_pair[1])                    
+
+                ignore_reaction = False
+                for the_gene in current_gene_list:
+                    if the_gene.id in expression_dict:
+                        reaction_gene_p_dict[the_gene.id] = expression_dict[the_gene.id]['p']
+                        reaction_gene_dir_dict[the_gene.id] = expression_dict[the_gene.id]['dir']
+                    else:
+                        if missing_genes == 'no_change':
+                            reaction_gene_p_dict[the_gene.id] = 1.
+                            # This is neutral but assign up
+                            reaction_gene_dir_dict[the_gene.id] = '+'
+                        elif missing_genes == 'ignore_reaction':
+                            ignore_reaction = True
                         
-            # Now evaluate the reaction
-            for the_gene in current_gene_list:
-                the_gene_re = re.compile('(^|(?<=( |\()))%s(?=( |\)|$))'%re.escape(the_gene.id))
-                the_gene_reaction_rule = the_gene_re.sub(str(reaction_gene_dict[the_gene.id]), the_gene_reaction_rule)
-            reaction_pval_dict[test_reaction.id] = evaluate_expression_string(the_gene_reaction_rule)
-    return reaction_pval_dict
+                # Now evaluate the reaction
+                if not ignore_reaction:
+                    for the_gene in current_gene_list:
+                        the_gene_re = re.compile('(^|(?<=( |\()))%s(?=( |\)|$))'%re.escape(the_gene.id))
+                        the_value_string = '%.10f' % reaction_gene_p_dict[the_gene.id]
+                        the_gene_reaction_rule = the_gene_re.sub(the_value_string, the_gene_reaction_rule)
+                    
+                    reaction_pval_dict[test_reaction.id] = evaluate_expression_string(the_gene_reaction_rule)
+
+                    the_value_string = '%.10f' % reaction_pval_dict[test_reaction.id]
+                    reaction_dir_dict[test_reaction.id] = []
+                    for test_gene in reaction_gene_p_dict.keys():
+                        test_value_string = '%.10f' % reaction_gene_p_dict[test_gene]
+                        if the_value_string == test_value_string:
+                            reaction_dir_dict[test_reaction.id] = reaction_gene_dir_dict[the_gene.id]
+    return {'p': reaction_pval_dict, 'dir': reaction_dir_dict}
 
      
 import re
@@ -94,9 +101,9 @@ number_finder = re.compile("[\d]+\.?[\d]*")
 class penalty_number:
     """
     this class inspired by panalty evaluation in gim3e:
-    Schmidt, B. J., Ebrahim, A., Metz, T. O., Adkins, J. N., Palsson, B. O., & Hyduke, D. R. (2013). 
-    GIM3E: condition-specific models of cellular metabolism developed from metabolomics 
-    and expression data. Bioinformatics, 29(22), 2900–2908.
+    Schmidt, B. J., Ebrahim, A., Metz, T. O., Adkins, J. N., 
+    Palsson, B. O., & Hyduke, D. R. (2013). 
+    Bioinformatics, 29(22), 2900–2908.
     """
     def __init__(self, value):
         self.str_value = str(value)
@@ -115,13 +122,14 @@ def evaluate_expression_string(penalty_string, **kwargs):
     """ penalty string will have:
         * 'or' statements which need to be converted to min
         * 'and' statements which need to be converted to max
-    >>> evaluate_penalty("(1 and 2 and 3)")
+    for example:
+    evaluate_penalty("(1 and 2 and 3)")
     max(1, 2, 3)
 
-    this function inspired by panalty evaluation in gim3e:
-    Schmidt, B. J., Ebrahim, A., Metz, T. O., Adkins, J. N., Palsson, B. O., & Hyduke, D. R. (2013). 
-    GIM3E: condition-specific models of cellular metabolism developed from metabolomics 
-    and expression data. Bioinformatics, 29(22), 2900–2908.
+    this function inspired by penalty evaluation in gim3e:
+    Schmidt, B. J., Ebrahim, A., Metz, T. O., Adkins, J. N., 
+    Palsson, B. O., & Hyduke, D. R. (2013). 
+    Bioinformatics, 29(22), 2900–2908.
 
     """
     # if there are no ands or ors, we are done
@@ -141,19 +149,15 @@ def evaluate_expression_string(penalty_string, **kwargs):
 
 
 def calculate_reporter_scores(the_network, hyperedge_score_dict, score_nodetype, hyperedge_nodetype, **kwargs):
-    """ This algorithm is based on the reporter methods
-    published by Jens Nielsen's group:
+    """ This algorithm is based on the reporter methods:
 
-    Patil, K. R., & Nielsen, J. (2005). Uncovering transcriptional 
-    regulation of metabolism by using metabolic network topology. PNAS, 102(8), 2685–9.
+    Patil, K. R., & Nielsen, J. (2005). PNAS, 102(8), 2685–9.
+    Oliveira, A. P., Patil, K. R., & Nielsen, J. (2008).  
+    BMC systems biology, 2, 17.
 
-    Oliveira, A. P., Patil, K. R., & Nielsen, J. (2008). Architecture of transcriptional regulatory 
-    circuits is knitted over the topology of bio-molecular interaction networks. BMC systems biology, 
-    2, 17.
-
-    And also inspired by functions in COBRApy
-    Ebrahim, A., Lerman, J. A., Palsson, B. O., & Hyduke, D. R. (2013). COBRApy: 
-    COnstraints-Based Reconstruction and Analysis for Python. BMC systems biology, 7(1), 74.
+    And also inspired by functions in COBRApy:
+    Ebrahim, A., Lerman, J. A., Palsson, B. O., & Hyduke, D. R. (2013). 
+    BMC systems biology, 7(1), 74.
 
     Arguments:
      the_network: a NAMpy network with appropriately defined nodetypes
@@ -164,20 +168,25 @@ def calculate_reporter_scores(the_network, hyperedge_score_dict, score_nodetype,
      hyperedge_nodetype: the 'nodetype' the source scores are for, e.g. "reaction," "metabolite," "gene"
 
     kwargs:
-     score_type: 'p' or 'z'
+     score_type: ['p' (default), 'z']
+      Note the score here should be related to the magnitude
+      of change, not the directionality.
      number_of_randomizations
-     background_correction
+     background_correction: [True (default), False]
+                            Whether to apply background correction e.g.
+                            correct for the null distribution
      degree: aggregate all n-degree neighbors into the reporter metabolites.  
              The default, 1, captures nearest-neighbors
-     verbose: If true, output information on the background correction calculation,
+     verbose: [True (default), False]
+              If true, output information on the background correction calculation,
               which can take some time when the number_of_randomizations is large or
               the degree is high.
     aggregation_type: 'size-independent' or 'mean'
-                      'size-independent' is similar to Stouffer's method, z-scores divided by 1/(k**.5)
+                      'size-independent' is similar to Stouffer's method, z-scores divided by (k**.5)
                       and was employed in Patil 2005.  This method is not supported for > degree 1
                       'mean' aggregates z-scores by the average and was employed in Oliveira 2008
                       note that if background_correct is on, these methods will yield identical,
-                      ~size-independent results.
+                      results independent of the degree of the metabolite, k.
 
     
     """
@@ -189,70 +198,45 @@ def calculate_reporter_scores(the_network, hyperedge_score_dict, score_nodetype,
     from ..core.Node import Node
     continue_flag = True
 
-    allowed_values = ['p', 'z']
-    if 'score_type' in kwargs:
-        if kwargs['score_type'] in allowed_values:
-            score_type = kwargs['score_type']
-        else:
-            score_type = allowed_values[0]
-    else:
-        score_type = allowed_values[0]
+    verbose = test_kwarg('verbose', kwargs, [True, False])
+    
+    score_type = test_kwarg('score_type', kwargs, ['p', 'z'])
 
     if 'number_of_randomizations' in kwargs:
         number_of_randomizations = kwargs['number_of_randomizations']
     else:
         number_of_randomizations = 1000
 
-    allowed_values = [True, False]
-    if 'background_correction' in kwargs:
-        if kwargs['background_correction'] in allowed_values:
-            background_correction = kwargs['background_correction']
-        else:
-            background_correction = allowed_values[0]
-    else:
-        background_correction = allowed_values[0]
+    if ((len(the_network.nodetypes) == 1) & (the_network.nodetypes[0].id == 'monopartite')):
+        print("Convert to multipartite network first, exiting...")
+        continue_flag = False
+
+    background_correction = test_kwarg('background_correction', kwargs, [True, False])
 
     if 'degree' in kwargs:
         degree = kwargs['degree']
+        if not type(degree) == int:
+            confinue_flag = False
+            if verbose:
+                print("The value of the 'degree' kwarg should be an integer, exiting...")
     else:
         degree = 1
 
-    allowed_values = [True, False]
-    if 'verbose' in kwargs:
-        if kwargs['verbose'] in allowed_values:
-            verbose = kwargs['verbose']
-        else:
-            verbose = allowed_values[0]
-    else:
-        verbose = allowed_values[0]        
+    aggregation_type = test_kwarg('aggregation_type', kwargs, ['size-independent', 'mean'])
 
-    allowed_values = ['size-independent', 'mean']
-    if 'aggregation_type' in kwargs:
-        if kwargs['aggregation_type'] in allowed_values:
-            aggregation_type = kwargs['aggregation_type']
-        else:
-            aggregation_type = allowed_values[0]
-    else:
-        aggregation_type = allowed_values[0] 
-
-    allowed_values = [x.id for x in the_network.nodetypes]
-    if score_nodetype not in allowed_values:
+    allowed_nodetypes = [x.id for x in the_network.nodetypes]
+    if score_nodetype not in allowed_nodetypes:
         print 'A valid nodetype is not selected for score_nodetype, exiting...'
         confinue_flag = False
-
-    allowed_values = [x.id for x in the_network.nodetypes]
-    if score_nodetype not in allowed_values:
-        print 'A valid nodetype is not selected for score_nodetype, exiting...'
-        confinue_flag = False
-    if hyperedge_nodetype not in allowed_values:
+    if hyperedge_nodetype not in allowed_nodetypes:
         print 'A valid nodetype is not selected for hyperedge_nodetype, exiting...'
         confinue_flag = False
     
     if ((aggregation_type == 'size-independent') & (degree > 1)):
-        print("Warning, 'size-independent' aggregation option has not been investigated when degree > 1, the background correction results may be suboptimal.")
+        print("Warning, 'size-independent' aggregation option has not been investigated when degree > 1. Run with 'mean,' exiting...")
+        confinue_flag = False
 
     if continue_flag:
-
         # Make sure these are id's, will use to grab objects from the current model
         from copy import deepcopy
         hyperedge_score_dict = deepcopy(hyperedge_score_dict)
@@ -267,7 +251,7 @@ def calculate_reporter_scores(the_network, hyperedge_score_dict, score_nodetype,
         hyperedge_list = [the_network.nodetypes.get_by_id(hyperedge_nodetype).nodes.get_by_id(hyperedge_id) for hyperedge_id in hyperedge_score_dict.keys() if hyperedge_id in model_hyperedge_ids]
         the_scores = [hyperedge_score_dict[the_hyperedge.id] for the_hyperedge in hyperedge_list]
 
-        # minimum and maximum p-values are used to prevent numerical problems.
+        # minimum and maximum p-values are checked to prevent numerical problems.
         the_scores = array(the_scores)
         if score_type == 'p':
             minimum_p = min(the_scores[the_scores.nonzero()[0]])
@@ -291,10 +275,13 @@ def calculate_reporter_scores(the_network, hyperedge_score_dict, score_nodetype,
             for the_node in the_connected_nodes:
                 if the_node.get_nodetype() == score_nodetype:
                     the_nodes.add(the_node)
-        # Observe that there may be some asymmetry in the node relations.
-        # E.g. a metabolite can still turnover/change if at least
-        # one reaction is present, but a reaction cannot proceed if
-        # a single metabolite is missing/ cannot sustain turnover.
+        # Note that there may be some asymmetry in the node relations.
+        # E.g. if we are scoring reporter metabolites with reaction hyperedges,
+        # a metabolite can still turnover/change if at least
+        # one reaction is present. 
+        # However, if we are scoring reporter reactions with metabolite
+        # hyperedges,but a reaction cannot proceed if
+        # a single reactant metabolite is missing/ cannot sustain turnover.
         # However, we simply score based on available connected p-values here
 
         # Calculate the score for each metabolite

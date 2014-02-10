@@ -31,6 +31,7 @@ def string_to_list(the_string, force_to_float = True, sep_char =  ", "):
     elif the_list[0].startswith("\'") & the_list[0].endswith("\'"):
         the_list = [x.lstrip("\'").rstrip("\'") for x in the_list]    
     for index, the_value in enumerate(the_list):
+        
         if is_float_try(the_value) & (force_to_float == True):
             the_list[index] = float(the_value)
         else:
@@ -357,18 +358,18 @@ def read_table_file_to_dict(filename, **kwargs):
             return_dict[the_line[key_index]] = {}
             for index, subfield_key in enumerate(subfield_key_list):
                 cur_value = the_line[valueindices[index]]
-                #if (index != key_index):
                 if is_float_try(cur_value) & (force_to_float == True):
                     cur_value = float(cur_value)
                 else:
                     if ((cur_value.startswith('"')) & (cur_value.endswith(('"')))):
-                        # The double-quotes are sometimes inserted before and after long string/lists
+                        # The double-quotes are sometimes inserted before
+                        # and after long string/lists
                         # and aren't needed
                         cur_value = cur_value.lstrip('"').rstrip('"')
-                        if interpret_lists:
-                            if type(cur_value) != list:
-                                if ((cur_value.startswith('[')) & (cur_value.endswith((']')))):
-                                    cur_value = string_to_list(cur_value, force_to_float = force_to_float)
+                    if interpret_lists:
+                        if type(cur_value) != list:
+                            if ((cur_value.startswith('[')) & (cur_value.endswith((']')))):
+                                cur_value = string_to_list(cur_value, force_to_float = force_to_float)
                 return_dict[the_line[key_index]][subfield_key] = cur_value
             
     return return_dict

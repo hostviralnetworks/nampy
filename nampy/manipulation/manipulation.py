@@ -411,7 +411,7 @@ def merge_networks_by_node(the_first_network, the_second_network, new_network_id
     the_weights = [x.weight for x in the_edges_to_add]
     the_notes = [deepcopy(x.notes) for x in the_edges_to_add]
     
-    the_edges = the_network.connect_node_pair_set(the_node_pair_list, the_weight_list = the_weights)
+    the_edges = the_network.connect_node_pair_list(the_node_pair_list, the_weight_list = the_weights)
     
     for i, the_edge in enumerate(the_edges):
         the_edge.notes = the_notes[i]

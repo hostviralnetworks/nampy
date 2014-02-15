@@ -67,7 +67,7 @@ def translate_cobra_model(cobra_model):
             the_nampy_gene = the_nodetype.nodes.get_by_id(the_gene.id)
             the_edges_to_add.append([the_nampy_reaction, the_nampy_gene])
 
-    the_network.connect_node_pair_set(the_edges_to_add)
+    the_network.connect_node_pair_list(the_edges_to_add)
     # We also need gene reaction rules.
     return the_network
     

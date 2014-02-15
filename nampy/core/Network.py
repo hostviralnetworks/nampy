@@ -167,7 +167,7 @@ class Network(Object):
         return the_edge
 
 
-    def connect_node_pair_set(self, the_node_pair_list, **kwargs):
+    def connect_node_pair_list(self, the_node_pair_list, **kwargs):
         """ Connect a set of node pairs to create edges.
 
         Arguments:

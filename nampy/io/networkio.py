@@ -145,7 +145,7 @@ def load_pickled_network(filename, **kwargs):
         the_node_pair = [the_network.nodetypes[0].nodes.get_by_id(the_edge_dict['nodes'][0]), the_network.nodetypes[0].nodes.get_by_id(the_edge_dict['nodes'][1])]
         the_node_pair_list.append(the_node_pair)
 
-    the_edge_list = the_network.connect_node_pair_set(the_node_pair_list, **kwargs)
+    the_edge_list = the_network.connect_node_pair_list(the_node_pair_list, **kwargs)
                 
     for the_edge in the_edge_list:
         for the_attribute in saved_edge_attribute_list:
@@ -223,7 +223,7 @@ def create_network_model_from_textfile(network_id, network_file, **kwargs):
     # Get rid of pairs where node pairs with itself
     the_node_pairs = [x for x in the_node_pairs if (x[0] != x[1])]
         
-    the_edge_list = the_network.connect_node_pair_set(the_node_pairs, **kwargs)
+    the_edge_list = the_network.connect_node_pair_list(the_node_pairs, **kwargs)
     
     the_network.update()
 

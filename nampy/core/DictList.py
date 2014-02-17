@@ -18,7 +18,7 @@ import re
 def get_id(object):
     """return an id for the object
 
-    This allows the function to be generalize to non-cobra.core objects,
+    This allows the function to be generalize to non-nampy.core objects,
     however, this added function call slows things down.
 
     """
@@ -146,7 +146,7 @@ class DictList(list):
 
     def index(self, id):
         """
-        id: A string or a :class:`~cobra.core.Object`
+        id: A string or a :class:`~nampy.core.Object`
         """
         # because values are unique, start and stop are not relevant
         try:
@@ -154,8 +154,8 @@ class DictList(list):
         except:
             the_object = self._dict[id.id]
             if self[the_object] is not id:
-                raise Exception("The id for the cobra.object (%s) provided "%repr(id) +\
-                                "is in this dictionary but the_id is not the cobra.object")
+                raise Exception("The id for the nampy.object (%s) provided "%repr(id) +\
+                                "is in this dictionary but the_id is not the nampy.object")
         return the_object
 
     def __contains__(self, object):

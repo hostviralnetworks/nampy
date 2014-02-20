@@ -5,9 +5,10 @@ def evaluate_reaction_pvalues(the_network, expression_dict, **kwargs):
     to get reaction level changes
 
     this function inspired by penalty evaluation in gim3e:
-    Schmidt, B. J., Ebrahim, A., Metz, T. O., Adkins, J. N., Palsson, B. O., & Hyduke, D. R. (2013). 
-    Bioinformatics, 29(22), 2900–2908.
-
+    Schmidt, B. J., Ebrahim, A., Metz, T. O., Adkins, J. N., 
+    Palsson, B. O., & Hyduke, D. R. (2013). 
+    Bioinformatics, 29(22), 2900-2908.
+    
     Arguments:
      the_network: a nampy network from a COBRApy model, 
                   converted to multipartite
@@ -103,7 +104,7 @@ class penalty_number:
     this class inspired by panalty evaluation in gim3e:
     Schmidt, B. J., Ebrahim, A., Metz, T. O., Adkins, J. N., 
     Palsson, B. O., & Hyduke, D. R. (2013). 
-    Bioinformatics, 29(22), 2900–2908.
+    Bioinformatics, 29(22), 2900-2908.
     """
     def __init__(self, value):
         self.str_value = str(value)
@@ -129,7 +130,7 @@ def evaluate_expression_string(penalty_string, **kwargs):
     this function inspired by penalty evaluation in gim3e:
     Schmidt, B. J., Ebrahim, A., Metz, T. O., Adkins, J. N., 
     Palsson, B. O., & Hyduke, D. R. (2013). 
-    Bioinformatics, 29(22), 2900–2908.
+    Bioinformatics, 29(22), 2900-2908.
 
     """
     # if there are no ands or ors, we are done
@@ -151,13 +152,14 @@ def evaluate_expression_string(penalty_string, **kwargs):
 def calculate_reporter_scores(the_network, hyperedge_score_dict, score_nodetype, hyperedge_nodetype, **kwargs):
     """ This algorithm is based on the reporter methods:
 
-    Patil, K. R., & Nielsen, J. (2005). PNAS, 102(8), 2685–9.
+    Patil, K. R., & Nielsen, J. (2005). PNAS, 102(8), 2685-9.
     Oliveira, A. P., Patil, K. R., & Nielsen, J. (2008).  
     BMC systems biology, 2, 17.
 
     And also inspired by functions in COBRApy:
-    Ebrahim, A., Lerman, J. A., Palsson, B. O., & Hyduke, D. R. (2013). 
-    BMC systems biology, 7(1), 74.
+    Schmidt, B. J., Ebrahim, A., Metz, T. O., Adkins, J. N., 
+    Palsson, B. O., & Hyduke, D. R. (2013). 
+    Bioinformatics, 29(22), 2900-2908.
 
     Arguments:
      the_network: a NAMpy network with appropriately defined nodetypes

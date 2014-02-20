@@ -37,18 +37,20 @@ class Object(object):
         if '_model' in state:
             state['_model'] = None
         return state
-    
-    def guided_copy(self):
-        """Trying to make a faster copy procedure for cases where large
-        numbers of metabolites might be copied.  Such as when copying reactions.
 
-        This function allows us to manipulate how specific attributes are copied.
-
-        """
-        the_copy = self.__class__(self.id)
-        [setattr(the_copy, k, v)
-         for k, v in self.__dict__.iteritems()]
-        return(the_copy)
+    # Removed guided_copy, object-specific copy
+    # methods are available for NAMpy objects.
+    #def guided_copy(self):
+    #    """Trying to make a faster copy procedure for cases where large
+    #    numbers of metabolites might be copied.  Such as when copying reactions.
+    #
+    #    This function allows us to manipulate how specific attributes are copied.
+    #
+    #    """
+    #    the_copy = self.__class__(self.id)
+    #    [setattr(the_copy, k, v)
+    #     for k, v in self.__dict__.iteritems()]
+    #    return(the_copy)
 
     ## def __setstate__(self, state):
     ##     self.__dict__.update(state)

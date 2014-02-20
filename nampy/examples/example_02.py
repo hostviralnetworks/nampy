@@ -1,6 +1,6 @@
 # A script to illustrate working with recon_1 and reporter interactions
 import nampy
-from nampy.io import networkio
+from nampy.networkio import networkio, cytoscapeio
 from nampy.multipartiteanalysis import reporterfeatures
 from nampy.statistics import networkstatistics
 
@@ -162,7 +162,6 @@ for the_edge in the_network.edges:
 
 # Don't write the genes to file as nodes,
 # this isn't needed for visualization
-from nampy.io import cytoscapeio
 cytoscapeio.write_network_textfile(the_network, properties_dict = edge_property_dict, exclude_nodetypes = ['gene'])
 cytoscapeio.write_node_attributes_to_textfile(the_network, properties_dict = node_property_dict, exclude_nodetypes = ['gene'])
 # A .cys file made from this analysis is

@@ -235,10 +235,41 @@ class Network(Object):
             
 
     def get_node_locations(self):
-        if (len(self.nodetypes) == 1) & (self.nodetypes[0] == 'monopatite'):
-            the_node_locations = {x: 'monopartite' for x in self.nodetypes[0].nodes}
+        if (len(self.nodetypes) == 1) & (self.nodetypes[0] == 'monopartite'):
+            the_node_locations = {x.id: 'monopartite' for x in self.nodetypes[0].nodes}
         else:
             the_node_locations = {}
             for the_nodetype in self.nodetypes:
                 the_node_locations.update({x.id: the_nodetype.id for x in the_nodetype.nodes})
         return the_node_locations
+
+
+    def copy(self):
+        the_copied_network = Network(self.id)
+        the_node_locations = self.get_node_locations()
+        the_nodetype_ids = the_node_locations.values()
+        the_nodetype_locations = {}
+        for the_nodetype_id in the_nodetype_ids:
+            the_nodetype_locations[the_nodetype_id] = []
+        for the_node_id in the_node_locations.keys():
+            the_nodetype_locations[the_node_locations[the_node_id]].append(the_node_id)
+        the_nodes_to_add = []
+        for the_nodetype_id in the_nodetype_ids:
+            the_nodetype = self.nodetypes.get_by_id(the_nodetype_id)
+            the_nodes_to_add += [the_node.copy() for the_node in the_nodetype.nodes]
+        # We will make the network in its monopartite form.
+        the_copied_network.nodetypes[0].add_nodes(the_nodes_to_add)
+        # Now to add edges.  Unfortunately this is may be slow.
+        node_pair_list = []
+        the_weight_list = []
+        the_note_list = []
+        for the_edge in self.edges:
+            node_pair_list.append([x.id for x in the_edge.get_node_pair()])
+            the_weight_list.append(the_edge.weight)
+            the_note_list.append(deepcopy(the_edge.notes))
+        for the_index, the_node_id_pair in enumerate(node_pair_list):
+            node_pair_list[the_index] = [the_copied_network.nodetypes[0].nodes.get_by_id(x) for x in the_node_id_pair]
+        the_copied_network.connect_node_pair_list(node_pair_list, the_weight_list = the_weight_list)
+        for the_index, the_edge in enumerate(the_copied_network.edges):
+            the_edge.notes = the_note_list[the_index]        
+        return the_copied_network

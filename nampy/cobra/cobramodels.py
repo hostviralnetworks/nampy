@@ -34,7 +34,7 @@ def translate_cobra_model(cobra_model):
     for the_metabolite in cobra_model.metabolites:
         the_nampy_metabolite = Node(the_metabolite.id)
         the_nampy_metabolite.notes = deepcopy(the_metabolite.notes)
-        the_nampy_metabolite.notes['formula'] = [deepcopy(the_metabolite.formula)]
+        the_nampy_metabolite.notes['formula'] = [deepcopy(the_metabolite.formula.id)]
         the_nampy_metabolite.notes['name'] = [deepcopy(the_metabolite.name)]
         the_nampy_metabolite.notes['charge'] = [deepcopy(the_metabolite.charge)]
         the_nampy_metabolite.notes['compartment'] = [deepcopy(the_metabolite.compartment)]

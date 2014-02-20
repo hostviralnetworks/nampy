@@ -1,7 +1,7 @@
 # A script to illustrate nampy and run network propagation
 import nampy
 import platform
-from nampy.io import networkio
+from nampy.networkio import networkio
 from nampy.annotation import idmapping
 from nampy.manipulation import manipulation
 from nampy.monopartiteanalysis import prince

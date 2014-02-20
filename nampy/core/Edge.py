@@ -29,12 +29,7 @@ class Edge(Object):
     def get_node_pair(self):
         return self._nodes
 
-    # This method might be a useful addition in the future?
-    # For now, try to keep more detailed multi-class
-    # operations in the manipulation module or as
-    # components of the Network class
-    # def replace_node(self, the_old_node, the_new_node):
-    #    the_node_pair = self.get_node_pair()
-    #    the_index = the_node_pair.index(the_old_node)
-    #    the_edge._nodes[the_index] = the_new_node
-    #    self.update_id()
+    # copy() methods would not be valid for edges.
+    # No point in duplicating an existing edges,
+    # though you might want to link nodes
+    # in a different network in a similar way.

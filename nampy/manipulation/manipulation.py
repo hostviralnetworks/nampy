@@ -346,7 +346,6 @@ def merge_networks_by_node(the_first_network, the_second_network, new_network_id
      new_network_id
 
     kwargs:
-    # merge_type: asymmetric or symmetric
      verbose
 
     """
@@ -355,51 +354,54 @@ def merge_networks_by_node(the_first_network, the_second_network, new_network_id
     from ..core.Network import Network
     from ..core.NodeType import NodeType
     from copy import deepcopy
-
+        
     verbose = test_kwarg('verbose', kwargs, [False, True])
-
+    
     the_network = Network(new_network_id)
     the_network_1_node_locations = the_first_network.get_node_locations()
     the_network_2_node_locations = the_second_network.get_node_locations()
-
-    the_nodes_to_add = list(set(the_network_1_node_locations.keys() + the_network_2_node_locations.keys()))
+    the_first_network_nodetype_ids = list(set(the_network_1_node_locations.values()))
+    the_first_network_nodetype_locations = {}
+    for the_nodetype_id in the_first_network_nodetype_ids:
+        the_first_network_nodetype_locations[the_nodetype_id] = []
+    for the_node_id in the_network_1_node_locations.keys():
+        the_first_network_nodetype_locations[the_network_1_node_locations[the_node_id]].append(the_node_id)
+    the_second_network_nodetype_ids = list(set(the_network_2_node_locations.values()))
+    the_second_network_nodetype_locations = {}
+    for the_nodetype_id in the_second_network_nodetype_ids:
+        the_second_network_nodetype_locations[the_nodetype_id] = []
+    for the_node_id in the_network_2_node_locations.keys():
+        the_second_network_nodetype_locations[the_network_2_node_locations[the_node_id]].append(the_node_id)
 
     if verbose:
-        print "Creating the nodes..."
+        print "Creating the nodes..."  
 
+    the_nodes_to_add = []
+    the_node_ids_to_add = []
+    for the_nodetype_id in the_first_network_nodetype_locations.keys():
+        the_nodetype = the_first_network.nodetypes.get_by_id(the_nodetype_id)
+        for the_node_id in the_first_network_nodetype_locations[the_nodetype_id]:
+            the_nodes_to_add.append(the_nodetype.nodes.get_by_id(the_node_id).copy())
+            the_node_ids_to_add.append(the_node_id)
+    for the_nodetype_id in the_second_network_nodetype_locations.keys():
+        the_nodetype = the_second_network.nodetypes.get_by_id(the_nodetype_id)
+        for the_node_id in the_second_network_nodetype_locations[the_nodetype_id]:
+            if the_node_id not in the_node_ids_to_add:
+                the_nodes_to_add.append(the_nodetype.nodes.get_by_id(the_node_id).copy())
+                the_node_ids_to_add.append(the_node_id)
+                # Otherwise we let information in the existing node override
+ 
     the_nodetype = the_network.nodetypes[0]
-    the_nodes_to_add.sort()
     the_nodetype.add_nodes(the_nodes_to_add)
-
-    for the_node in the_nodetype.nodes:
-        if the_node.id in the_network_1_node_locations.keys():
-            the_old_node = the_first_network.nodetypes.get_by_id(the_network_1_node_locations[the_node.id]).nodes.get_by_id(the_node.id)
-            the_node._nodetype = the_old_node._nodetype
-            the_node.source = the_old_node.source
-            the_node.notes = deepcopy(the_old_node.notes)
-            # if merge_type == 'symmetric':
-        if the_node.id in the_network_2_node_locations.keys():
-            # Give priority to data from the first network
-            the_old_node = the_second_network.nodetypes.get_by_id(the_network_2_node_locations[the_node.id]).nodes.get_by_id(the_node.id)
-            if the_node.id not in the_network_1_node_locations.keys():
-                the_node._nodetype = the_old_node._nodetype
-                the_node.source = the_old_node.source
-                the_node.notes = deepcopy(the_old_node.notes)  
-            else:
-                for the_key in the_old_node.notes.keys():
-                    if the_key not in the_node.notes:
-                        the_node.notes[the_key] = deepcopy(the_old_node.notes[the_key])
 
     if verbose:
         print "     ... the nodes are created."
         print "Linking the nodes, this may take a while..."
-
-
+        
     # here we prioritize edges in the first network for the purpose of weights and notes
-    # is is assumed there is no redundancy in the edge ids
     the_edges_to_add = [x for x in the_first_network.edges]
-    the_first_id = [x._nodes[0].id + '_' + x._nodes[1].id for x in the_first_network.edges]
-    the_second_id = [x._nodes[1].id + '_' + x._nodes[0].id for x in the_first_network.edges]
+    the_first_id = [x._nodes[0].id + edge_id_separator + x._nodes[1].id for x in the_first_network.edges]
+    the_second_id = [x._nodes[1].id + edge_id_separator + x._nodes[0].id for x in the_first_network.edges]
     for the_edge in the_second_network.edges:
         if the_edge.id not in the_first_id:
             if the_edge.id not in the_second_id:
@@ -415,8 +417,55 @@ def merge_networks_by_node(the_first_network, the_second_network, new_network_id
     
     for i, the_edge in enumerate(the_edges):
         the_edge.notes = the_notes[i]
-
+        
     if verbose:
         print "Completed testing %s node pairs" %(str(len(the_edges)))      
 
     return the_network
+
+
+def make_subnetwork(the_network, the_node_id_list, id):
+    """ Make an independent network that
+    is a subset of network components consisting of the
+    node ids in the node_id_list and any edges
+    in the network that happen to connect them.
+
+    Arguments:
+     the_network: a NAMpy network object
+     the_node_id_list: a list of node ids
+     id: an id for the new "sub" network.
+
+    Returns:
+     the_subnetwork: a new network object that has the
+      indicated nodes and selected edges
+
+    """
+    from ..core.Network import Network
+    the_subnetwork = Network(id)
+    the_node_locations = the_network.get_node_locations()
+    nodes_to_pop = []
+    the_node_id_list = [x for x in the_node_id_list if x in the_node_locations.keys()]
+    node_ids_to_remove = [x for x in the_node_locations.keys() if x not in the_node_id_list]
+    for the_node_id in node_ids_to_remove:
+        the_node_locations.pop(the_node_id)
+    the_nodetype_ids = list(set(the_node_locations.values()))
+    the_nodetype_locations = {}
+    for the_nodetype_id in the_nodetype_ids:
+        the_nodetype_locations[the_nodetype_id] = []
+    for the_node_id in the_node_locations.keys():
+        the_nodetype_locations[the_node_locations[the_node_id]].append(the_node_id)
+    the_nodes_to_add = []
+    for the_nodetype_id in the_nodetype_ids:
+        the_nodetype = the_network.nodetypes.get_by_id(the_nodetype_id)
+        the_nodes_to_add += [the_node.copy() for the_node in the_nodetype.nodes if the_node.id in the_node_id_list]
+    the_subnetwork.nodetypes[0].add_nodes(the_nodes_to_add)
+    node_pairs_to_connect = []
+    the_weight_list = []
+    for the_edge in the_network.edges:
+        edge_node_id_list = [x.id for x in the_edge.get_node_pair()]
+        if (edge_node_id_list[0] in the_node_id_list) and (edge_node_id_list[1] in the_node_id_list): 
+            node_pairs_to_connect.append([the_subnetwork.nodetypes[0].nodes.get_by_id(edge_node_id_list[0]), the_subnetwork.nodetypes[0].nodes.get_by_id(edge_node_id_list[1])])
+            the_weight_list.append(the_edge.weight)
+    the_subnetwork.connect_node_pair_list(node_pairs_to_connect, the_weight_list = the_weight_list)
+    return the_subnetwork
+        

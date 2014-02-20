@@ -57,3 +57,16 @@ class Node(Object):
             
     def get_network(self):
         return self._network       
+
+    def copy(self):
+        # Copy all of the information
+        # in the node, but we won't copy over
+        # the associations such as the
+        # edges and network.
+        the_copy = Node(self.id)
+        # Nodetype is a string rather than
+        # real association so we copy it over
+        the_copy.set_nodetype(self.get_nodetype())
+        the_copy.source = self.source
+        the_copy.notes = deepcopy(self.notes)
+        return the_copy

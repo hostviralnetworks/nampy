@@ -203,3 +203,5 @@ def write_node_attributes_to_textfile(the_network, **kwargs):
                     the_output_dict[the_id][the_property] = properties_dict[the_property][the_id]
 
         write_dict_to_textfile(the_network.id + '_node_attribute_table.txt', the_output_dict, 'node_id')
+
+

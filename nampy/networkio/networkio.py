@@ -4,9 +4,10 @@ from .. core.NodeType import NodeType
 from .. core.Network import Network
 from ..core.shared_functions import test_kwarg
 
-saved_node_attribute_list = ['notes', 'annotation', 'source', '_nodetype']
-saved_edge_attribute_list = ['weight', 'notes', 'annotation']
-saved_network_attribute_list = ['notes', 'annotation']
+from ..core.parameters import saved_node_attribute_list
+from ..core.parameters import saved_edge_attribute_list
+from ..core.parameters import saved_network_attribute_list
+
 
 def is_float_try(the_string):
     """ Simple test to check if a string can be represented as a 
@@ -156,10 +157,6 @@ def load_pickled_network(the_filename, **kwargs):
         for the_attribute in saved_edge_attribute_list:
             if the_attribute in dir(the_edge):
                 setattr(the_edge, the_attribute, the_edge_ordered_dict[the_edge.id][the_attribute])
-
-    # if verbose:
-    #         if i % 10000 == 0:
-    #             print "Completed linking %s of %s node pairs" %(str(i), str(len(the_edge_ordered_dict.keys())))
         
     the_network.update()
     
@@ -176,9 +173,7 @@ def create_network_model_from_textfile(network_id, network_file, **kwargs):
      file_name: name of the network file.  2 columns tab delimited, with node1 node2
 
     kwargs:
-
-    TODO: might want to compartmentalize this in the future
-     if this data becomes available.
+     none, just a pass-through
 
     Returns:
      network_model
@@ -427,3 +422,5 @@ def write_dict_to_textfile(the_filename, the_output_dict, top_key):
             else:
                 fp.writelines("\t")        
     fp.close()
+
+

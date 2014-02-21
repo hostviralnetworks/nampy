@@ -1,34 +1,33 @@
 # Full functionality of this module requires a functional rpy2 and R
 from ..core.shared_functions import test_kwarg
+mtcorrect_methods = ['"BY"', '"holm"', '"hochberg"', '"hommel"', '"bonferroni"', '"BH"', '"fdr"', '"none"']
 
 
-def mtcorrect(p_value_dict, method = '"BY"'):
+def mtcorrect(p_value_dict, **kwargs):
     """ Apply MT correction.  This is a wrapper for R's p.adjust function.
 
     Arguments:
      p_value_dict: a dict with keys = probe names, and values of p-values
-     method: MT correction method, from R.
-      "holm"
-      "hochberg",
-      "hommel"
-      "bonferroni"
-      "BH"
-      "BY"
-      "fdr"
-      "none"
+
+    kwargs:
+     method: MT correction method, from R.  See mtcorrect_methods.  Default is '"BY"'
+      
     Returns:
      adjusted_p
      
  
     """
     continue_flag = True
+
+    method = test_kwarg('method', kwargs, mtcorrect_methods)
+    
     try:
         from rpy2.robjects import r
         from rpy2 import robjects
         from rpy2.robjects import numpy2ri
         numpy2ri.activate()
-    except:
-        print "This module requires a functional rpy2 and R, exiting..."
+    except ImportError:
+        print "networkstatistics.mtcorrect requires a functional rpy2 and R, exiting..."
         continue_flag = False
 
     if continue_flag:
@@ -75,8 +74,8 @@ def get_pvalue_from_scores(result_dict, permutation_dict, **kwargs):
         from rpy2 import robjects
         from rpy2.robjects import numpy2ri
         numpy2ri.activate()
-    except:
-        print "This module requires a functional rpy2 and R, exiting..."
+    except ImportError:
+        print "networkstatistics.get_pvalue_from_scores requires a functional rpy2 and R, exiting..."
         continue_flag = False
 
     if continue_flag:
@@ -515,3 +514,94 @@ def aggregate_probe_statistics_to_gene(probe_stats, probe_key_gene_list_values, 
     gene_mappings_dict['unmapped'] = unmapped_pairs
 
     return gene_mappings_dict
+
+
+def enrichment_test(the_present_set, the_absent_set, the_grouping_dict, **kwargs):
+    """ Hypergeometric testing for enrichment.
+
+    Arguments:
+     the_present_set: a list or set of items that were tested and were positive
+     the_absent_set: a list or set of items that were tested for but
+      were not present / significant
+     the_grouping_dict: a dict of items to check for enrichment.
+      key: grouping name, e.g. GO enrichment category, complex name, etc...
+      value: a list or set of items in the list to test, e.g. gene or protein id's
+
+    kwargs:
+     filter_items: [True (default) / False]
+      Whether to filter the items in the_grouping_dict and 
+      the_present_set / the_absent_set so only items
+      in common are tested.  I don't see why
+      you would want to set this to false for
+      genome-scale datasets, but the option is here
+      to do so.
+     verbose: [False(default) / True]
+     method: type of mt testing to apply, default is "BY", see
+      mtcorrect() for more information
+     direction: ["enrichment" (default), "depletion"]
+      essentially, whether to look at the right or left tail
+
+    returns:
+     test_result_dict: a dict with:
+      {the grouping names: the p-values}
+       
+    """
+    from copy import deepcopy
+    from scipy.stats import hypergeom
+    
+    filter_items = test_kwarg('filter_items', kwargs, [True, False])
+    verbose = test_kwarg('verbose', kwargs, [False, True])
+    method = test_kwarg('method', kwargs, mtcorrect_methods)
+    direction = test_kwarg('direction', kwargs, ["enrichment", "depletion"])
+
+    the_present_set = set(the_present_set)
+    the_absent_set = set(the_absent_set)
+    all_test_items_set = the_present_set |  the_absent_set
+    
+    the_grouping_dict = deepcopy(the_grouping_dict)
+    all_grouping_items_set = set([])
+    the_groupings_to_test = deepcopy(the_grouping_dict.keys())
+    for the_grouping in the_groupings_to_test:
+        the_grouping_dict[the_grouping] = set(the_grouping_dict[the_grouping])
+        if filter_items:
+            the_grouping_dict[the_grouping] = the_grouping_dict[the_grouping] & all_test_items_set
+        all_grouping_items_set.update(the_grouping_dict[the_grouping])
+        if len(the_grouping_dict[the_grouping]) == 0:
+            the_grouping_dict.pop(the_grouping)
+
+    if filter_grouping_members:
+        the_present_set = the_present_set & all_grouping_items_set
+        the_absent_set = the_absent_set & all_grouping_items_set
+        all_test_items_set = all_test_items_set & all_grouping_items_set
+
+    test_result_dict = {}
+
+    for the_grouping in the_grouping_dict.keys():
+        # x: number of present items in the grouping
+        # M: total number of items
+        # n: total number of present items
+        # N: total number of items in the grouping
+        the_grouping_set = the_grouping_dict[the_grouping]
+        x = len(the_present_set & the_grouping_set)
+        M = len(all_test_items_set)
+        n = len(the_present_set)
+        N = len(the_grouping_set)
+        if direction == "enrichment":
+            # We want the probability that x or more than x can be chosen randomly,
+            # so we must subtract 1
+            if x >= 1:
+                the_p = hypergeom.sf(x-1,M,n,N,loc=0)
+            else:
+                the_p = 1.
+        else:
+            the_p = hypergeom.cdf(x,M,n,N,loc=0)
+        test_result_dict[the_grouping] = the_p
+
+    p_right_dict = mtcorrect(test_result_dict, method = method) 
+
+    return test_result_dict
+
+    
+
+
+        

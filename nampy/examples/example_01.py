@@ -1,6 +1,5 @@
 # A script to illustrate nampy and run network propagation
 import nampy
-import platform
 from nampy.networkio import networkio
 from nampy.annotation import idmapping
 from nampy.manipulation import manipulation
@@ -10,12 +9,7 @@ from nampy.monopartiteanalysis import prince
 # Lee, I., Blom, U. M., Wang, P. I., Shim, J. E., & Marcotte, E. M. (2011). 
 # Prioritizing candidate disease genes by network-based boosting of genome-wide association data. 
 # Genome research, 21(7), 1109–21. doi:10.1101/gr.118992.110
-if platform.system() == 'Windows':
-    data_dir = nampy.__path__[0] + '\\data\\'
-else:
-    data_dir = nampy.__path__[0] + '/data/'
-import pdb
-
+data_dir = nampy.__path__[0] + '/data/'
 
 network_file = data_dir + "HumanNet_v1_join_networkonly.txt"
 humannet = networkio.create_network_model_from_textfile('humannet', network_file, verbose = True)

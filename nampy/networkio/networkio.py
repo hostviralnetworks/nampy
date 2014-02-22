@@ -40,17 +40,21 @@ def string_to_list(the_string, force_to_float = True, sep_char =  ", "):
     return the_list    
 
 
-def pickle_network(the_network, the_filename, path = ""):
+def pickle_network(the_network, the_filename, **kwargs):
     """ Break apart and save the network
 
     Arguments:
      the_network: object to save
      filename: effectively a prefix, don't include .pickle, .npy, etc..., these will be added
+
+    kwargs:
      path: directory to save to
 
     
     """
-    from collections import OrderedDict
+    # collections does not appear to be well preserved
+    # across platforms, so switched to a
+    # list to improve pickle portability
     import cPickle
     # don't need to copy since the object
     # will be written to file.
@@ -59,27 +63,34 @@ def pickle_network(the_network, the_filename, path = ""):
     from numpy import load
     import os
 
-    # We use an ordered dict here to avoid dependence on
+    if 'path' in kwargs:
+        path = kwargs['path']
+    else:
+        path = ""
+
+    # We avoid dependence on
     # package classes.  This will ensure models can be
     # fully ported even with base class updates.
-    the_node_ordered_dict = OrderedDict()
-    the_edge_ordered_dict = OrderedDict()
+    the_node_list_dict = [] 
+    the_edge_list_dict = []
     if len(the_network.nodetypes) == 1:
         the_nodes = the_network.nodetypes[0].nodes
         for the_node in the_nodes:
             the_dict = {}
+            the_dict[the_node.id] = {}
             for the_attribute in saved_node_attribute_list:
-                the_dict[the_attribute] = getattr(the_node, the_attribute)
-            the_node_ordered_dict[the_node.id] = the_dict
+                the_dict[the_node.id][the_attribute] = getattr(the_node, the_attribute)
+            the_node_list_dict.append(the_dict)
         for the_edge in the_network.edges:
             the_dict = {}
+            the_dict[the_edge.id] = {}
             for the_attribute in saved_edge_attribute_list:
-                the_dict[the_attribute] = getattr(the_edge, the_attribute)
-            the_dict['nodes'] = [the_edge._nodes[0].id, the_edge._nodes[1].id]
-            the_edge_ordered_dict[the_edge.id] = the_dict        
+                the_dict[the_edge.id][the_attribute] = getattr(the_edge, the_attribute)
+            the_dict[the_edge.id]['nodes'] = [the_edge._nodes[0].id, the_edge._nodes[1].id]
+            the_edge_list_dict.append(the_dict)        
         the_network_dict = {}
-        the_network_dict['nodes'] = the_node_ordered_dict
-        the_network_dict['edges'] = the_edge_ordered_dict
+        the_network_dict['nodes'] = the_node_list_dict
+        the_network_dict['edges'] = the_edge_list_dict
         for the_attribute in saved_network_attribute_list:
             if the_attribute in dir(the_network):
                 the_network_dict[the_attribute] = getattr(the_network, the_attribute)
@@ -131,32 +142,35 @@ def load_pickled_network(the_filename, **kwargs):
         if the_attribute in dir(the_network):
             setattr(the_network, the_attribute, the_network_dict[the_attribute])
 
-    the_node_ordered_dict = the_network_dict['nodes']
-    the_edge_ordered_dict = the_network_dict['edges']
+    the_node_list_dict = the_network_dict['nodes']
+    the_edge_list_dict = the_network_dict['edges']
 
-    the_node_ids = the_node_ordered_dict.keys()
+    the_node_ids = [x.keys()[0] for x in the_node_list_dict]
     the_nodetype = the_network.nodetypes[0]
     the_nodetype.add_nodes(the_node_ids)
-    for the_node in the_nodetype.nodes:
+    for the_index, the_node in enumerate(the_nodetype.nodes):
         for the_attribute in saved_node_attribute_list:
             if the_attribute in dir(the_node):
-                setattr(the_node, the_attribute, the_node_ordered_dict[the_node.id][the_attribute])
+                setattr(the_node, the_attribute, the_node_list_dict[the_index][the_node.id][the_attribute])
 
     if verbose:
         print '... nodes created. Linking nodes ...'  
 
     the_node_pair_list = []
-    for i, the_edge_id in enumerate(the_edge_ordered_dict.keys()):
-        the_edge_dict = the_edge_ordered_dict[the_edge_id]
+    for the_index, the_edge_dict in enumerate(the_edge_list_dict):
+        # We allow for updating the edge id here with the new default separation character
+        the_edge_dict = the_edge_dict[the_edge_dict.keys()[0]]
         the_node_pair = [the_network.nodetypes[0].nodes.get_by_id(the_edge_dict['nodes'][0]), the_network.nodetypes[0].nodes.get_by_id(the_edge_dict['nodes'][1])]
         the_node_pair_list.append(the_node_pair)
 
-    the_edge_list = the_network.connect_node_pair_list(the_node_pair_list, **kwargs)
+    the_edge_list = the_network.connect_node_pair_list(the_node_pair_list)
                 
-    for the_edge in the_edge_list:
+    for the_index, the_edge in enumerate(the_edge_list):
+        the_edge_dict = the_edge_list_dict[the_index]
+        the_edge_dict = the_edge_dict[the_edge_dict.keys()[0]]
         for the_attribute in saved_edge_attribute_list:
             if the_attribute in dir(the_edge):
-                setattr(the_edge, the_attribute, the_edge_ordered_dict[the_edge.id][the_attribute])
+                setattr(the_edge, the_attribute, the_edge_dict[the_attribute])
         
     the_network.update()
     

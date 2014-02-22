@@ -169,7 +169,7 @@ def get_more_source_dict_ids(source_dict, primary_key, **kwargs):
     try:
         from bioservices import UniProt
         u = UniProt(verbose=False)
-    except:
+    except ImportError:
         print("No BioServices module installed or cannot connect, exiting...")
         print("e.g. if you are using pip, did you 'pip install bioservices'?")
         continue_flag = False
@@ -241,7 +241,7 @@ def get_more_source_dict_ids(source_dict, primary_key, **kwargs):
 
 
 
-def retrieve_annotation(id_list, **kwargs):
+def get_entrez_annotation(id_list, **kwargs):
  
     """Annotates Entrez Gene IDs using Bio.Entrez, in particular epost (to
     submit the data to NCBI) and esummary to retrieve the information. 
@@ -251,12 +251,14 @@ def retrieve_annotation(id_list, **kwargs):
 
     Arguments:
      id_list: a list of Entrez id's each as a string
+     
     kwargs:
      e-mail: for ncbi
 
     Returns: 
      annotations: a dict of Entrez annotations 
 
+     
     """
     import sys
     continue_flag = True
@@ -286,30 +288,137 @@ def retrieve_annotation(id_list, **kwargs):
             request = Entrez.epost("gene",id=",".join(current_query))
             try:
                 result = Entrez.read(request)
-            except RuntimeError as e:
-                #TODO: How generate NAs instead of causing an error with invalid IDs?
-                print "An error occurred while retrieving the annotations."
-                print "The error returned was %s" % e
-                sys.exit(-1)
- 
-            webEnv = result["WebEnv"]
-            queryKey = result["QueryKey"]
-            data = Entrez.esummary(db="gene", webenv=webEnv, query_key =
-                                   queryKey)
-            annotation_list = Entrez.read(data)
-            
-            for the_entry in annotation_list:
-                if 'Id' in the_entry.keys():
-                    annotations[the_entry['Id']] = the_entry
-                    annotations[the_entry['Id']].pop('Id')
-            query_counter += 1
-            if (query_counter * max_query) > len(id_list):
-                query_all = True
 
+                webEnv = result["WebEnv"]
+                queryKey = result["QueryKey"]
+                data = Entrez.esummary(db="gene", webenv=webEnv, query_key =
+                                   queryKey)
+                annotation_list = Entrez.read(data)
+            
+                for the_entry in annotation_list:
+                    if 'Id' in the_entry.keys():
+                        annotations[the_entry['Id']] = the_entry
+                        annotations[the_entry['Id']].pop('Id')
+                query_counter += 1
+                if (query_counter * max_query) > len(id_list):
+                    query_all = True
+                
+            except RuntimeError as e:
+                print "An error occurred while retrieving some of the annotations."
+                print "The error returned was %s" % e
+                
             if verbose:
-                # TODO: check is this truncated?
                 print "Retrieved %d annotations for %d genes" % (len(annotations), len(current_query))
  
         return annotations
     else:
         return {}
+
+
+def get_go_terms(uniprot_acc_id, **kwargs):
+    """ Query for GO terms given a 'UniProt ACC'.
+
+    Arguments: 
+     uniprot_acc_id: UniProt accession identifier
+
+     kwargs:
+      get_descriptions: [True (default), False]
+       whether to get include descriptions for the
+       GO terms.
+
+    Output:
+     the_go_terms: a list if get_descriptions == False
+      or a dict if get_descriptions == True
+
+    """
+    continue_flag = True
+    get_descriptions = test_kwarg('get_descriptions', kwargs, [True, False])
+
+    try:
+        from bioservices import QuickGO
+        go = QuickGO(verbose=False)
+    except ImportError:
+        print("No BioServices module installed or cannot connect, exiting...")
+        print("e.g. if you are using pip, did you 'pip install bioservices'?")
+        continue_flag = False
+
+    if not get_descriptions:
+        the_go_terms = []
+    else:
+        the_go_terms = {}
+    
+    if continue_flag:
+        if not get_descriptions:
+            the_go_query = go.Annotation(protein=uniprot_acc_id, format="tsv",
+            source="UniProt", col="goID")
+            the_go_query = the_go_query.split('\n')
+            # The first element is a header
+            the_go_query.pop(0)
+            # The last element is empty
+            the_go_query.pop(len(the_go_terms) - 1)
+            the_go_terms = list(set(the_go_query))
+            the_go_terms.sort()
+        else:
+            the_go_query = go.Annotation(protein=uniprot_acc_id, format="tsv",
+            source="UniProt", col="goID,goName")
+            the_go_query = the_go_query.split('\n')
+            # The first element is a header
+            the_go_query.pop(0)
+            # The last element is empty
+            the_go_query.pop(len(the_go_query) - 1)           
+            for the_line in the_go_query:
+                the_line = the_line.split("\t")
+                the_go_id = the_line[0]
+                the_description = the_line[1]
+                the_go_terms[the_go_id] = the_description
+    return the_go_terms
+
+
+
+def get_go_descriptions(the_go_id, **kwargs):
+    """ Query for GO descriptions given a GO identifier.
+
+    Arguments: 
+     go_id: A valid GO identifier of the form: 'GO:XXXXXXX'
+
+     kwargs:
+      just a pass-through
+
+    Output:
+     the_go_x
+
+    """
+    continue_flag = True
+
+    try:
+        from bioservices import QuickGO
+        go = QuickGO(verbose=False)
+    except ImportError:
+        print("No BioServices module installed or cannot connect, exiting...")
+        print("e.g. if you are using pip, did you 'pip install bioservices'?")
+        continue_flag = False
+
+    the_go_string = ''
+    if continue_flag:
+        the_go_bs = go.Term(the_go_id)
+
+        for the_header in the_go_bs.getchildren():
+            if the_header.tag == 'term':
+                for the_entry in the_header.getchildren():
+                    # Here are some known headers we should get back but we only
+                    # really care about one
+                    # the_entry.tag == 'id'
+                    if the_entry.tag == 'name':
+                        the_go_string += the_entry.text
+                    # This might be useful
+                    # at some point
+                    # the_entry.tag == 'namespace'
+                    # the_entry.tag == 'def'
+                    # the_entry.tag == 'synonym'
+                    # We don't care about cross-references
+                    # the_entry.tag == 'xref'
+                    # print the_entry.text
+                    # the_entry.tag == 'is_a':
+                    # the_entry.text
+
+    return the_go_string

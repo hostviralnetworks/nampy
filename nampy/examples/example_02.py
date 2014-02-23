@@ -13,7 +13,7 @@ from nampy.statistics import networkstatistics
 # Shapira, S. D. et al. (2009). A physical and regulatory map of host-influenza interactions 
 # reveals pathways in H1N1 infection. Cell, 139(7), 1255–67.
 data_dir = nampy.__path__[0] + '/data/'
-the_rma_values = networkio.read_table_file_to_dict(data_dir + 'GSE19392_IFNb18hr.txt', force_to_float = True)
+the_rma_values = networkio.read_table_file_to_dict(data_dir + 'GSE19392_IFNb.txt', force_to_float = True)
 
 # Prepare p-values
 # for each of the probes

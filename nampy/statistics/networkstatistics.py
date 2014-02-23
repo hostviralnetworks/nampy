@@ -441,23 +441,25 @@ def aggregate_probe_statistics_to_gene(probe_stats, probe_key_gene_list_values, 
 
     Arguments:
      probe_stats: a dict with:
-      {probe_id: {'p', 'dir'}}
+      {probe_id: {'p': the_p, 'dir': '+' or '-'}}
       where p: p-value from a two-tailed test for change
             dir: '+' or '-'
      gene_key_probe_list_values: a dict with
       {probe_id: [gene_1, gene_2, ...]}
 
     kwargs:
-     aggregation_type: if more than one probe maps
-      to a gene, this is how to combine them.  Currently
-      supports: ['stouffer' (default), 'max', 'min', 'none']
+     aggregation_type: ['stouffer' (default), 'max', 'min', 'mean', 'none']
+      if more than one probe maps
+      to a gene, this is how to combine them.  
       One worthwhile resource:
       Fundel, K., Küffner, R., Aigner, T., & Zimmer, R. (2008). 
       Bioinformatics and Biology Insights, 2, 291–305.
       We opt not to include Fisher here since
       it there is no clear inference for directionality
-      for the p-value as with these methods.  Directionality
+      for the p-value as with the Stouffer methods.  Directionality
       is useful for assessing increases/decreases in reactions.
+      'mean' is included since it makes this function generally useful 
+      for other tasks.
 
     Returns:
      gene_mappings_dict: {mapped: {gene_id:{'p': the_p, 'dir': the_dir}} unmapped:[set(probe ids), set(gene_ids)]}
@@ -465,8 +467,9 @@ def aggregate_probe_statistics_to_gene(probe_stats, probe_key_gene_list_values, 
       'dir': '+' or '-'
 
     """
-
-    aggregation_type = test_kwarg('aggregation_type', kwargs, ['stouffer', 'max', 'min', 'none'])
+    from numpy import mean
+    
+    aggregation_type = test_kwarg('aggregation_type', kwargs, ['stouffer', 'max', 'min', 'mean', 'none'])
 
     
     # first get the mappings
@@ -500,6 +503,19 @@ def aggregate_probe_statistics_to_gene(probe_stats, probe_key_gene_list_values, 
                     # either of these.
                     the_index = the_p_list.index(min(the_p_list))
                     the_p_dict = {'p': the_p_list[the_index], 'dir': the_dir_list[the_index]}
+                elif aggregation_type == 'mean':
+                    the_weighted_p_list = []
+                    for the_index, the_dir in enumerate(the_dir_list):
+                        if the_dir == '+':
+                            the_dir_value = 1.
+                        else:
+                            the_dir_value = -1.
+                        the_weighted_p_list.append(the_dir_value * the_p_list[the_index])
+                    if mean(the_weighted_p_list) >= 0:
+                        the_avg_dir = '+'
+                    else:
+                        the_avg_dir = '-'
+                    the_p_dict = {'p': mean(the_p_list), 'dir': the_avg_dir}                    
                 else:
                     # max is the only one remaining
                     the_index = the_p_list.index(max(the_p_list))

@@ -255,7 +255,8 @@ def create_source_dict_from_textfile(source_file, **kwargs):
       node: id will be used for pairing to netowrk model nodes
       value_1: optional, assumed to be 1.
 
-    kwargs:
+    kwargs: 
+     none, just a pass through
 
     Returns:
      source_dict
@@ -307,7 +308,14 @@ def read_table_file_to_dict(filename, **kwargs):
      comment_char: Lines starting with this character/string
                   will be ignored
      sep_char: Separation character
-     interpret_lists: Boolean
+     interpret_lists: [True (default), False]
+     columns_on_top: [False (default), True]
+      if True, the columns will be used
+      as the top level keys.
+
+    Returns:
+     organized_return_dict
+      
     
     """
 
@@ -330,10 +338,11 @@ def read_table_file_to_dict(filename, **kwargs):
         sep_char = kwargs['sep_char']
     else:
         sep_char = "\t"
+
+    columns_on_top = test_kwarg('columns_on_top',kwargs,[False, True])
         
     force_to_float = test_kwarg('force_to_float', kwargs, [True, False])
     interpret_lists = test_kwarg('interpret_lists', kwargs, [True, False])
-
     
     fp = open(filename, 'rU')
     the_list = fp.readlines()
@@ -350,7 +359,6 @@ def read_table_file_to_dict(filename, **kwargs):
                 
     if top_key == '':
         firstline = the_list[0].split(sep_char)
-        #firstline = [str(i) for i, x in enumerate(firstline)]
         key_index = 0
         top_key = firstline[0]
     else:
@@ -385,22 +393,67 @@ def read_table_file_to_dict(filename, **kwargs):
                             if ((cur_value.startswith('[')) & (cur_value.endswith((']')))):
                                 cur_value = string_to_list(cur_value, force_to_float = force_to_float)
                 return_dict[the_line[key_index]][subfield_key] = cur_value
+
+    if columns_on_top:
+        organized_return_dict = {}
+        for the_column_header in subfield_key_list:
+            organized_return_dict[the_column_header] = {}
+            for the_row_name in return_dict.keys():
+                organized_return_dict[the_column_header][the_row_name] = return_dict[the_row_name][the_column_header]
             
-    return return_dict
+    else:
+        organized_return_dict = return_dict
+            
+    return organized_return_dict
 
 
-def write_dict_to_textfile(the_filename, the_output_dict, top_key):
-    """ Write a dict to a tab-delimited textfile.
+def write_dict_to_textfile(the_filename, the_output_dict, **kwargs):
+    """ Write a dict of dicts to a tab-delimited textfile table.
 
     Arguments:
      the_filename: file to write to
      the_output_dict: the dict to write
+
+    kwargs:
      top_key: string to describe the top key / id in the table.
+     subfields_on_top: [False (default), True]
+      whether to write to flip the order
+      so the subfields become the column headers in
+      the table and the top levels keys become the
+      row names.
+
+    Returns:
+     nothing, just writes to file
+     
 
     """
+    from copy import deepcopy
+
+    subfields_on_top = test_kwarg('subfields_on_top',kwargs,[False, True])
+
+    if 'top_key' in kwargs:
+        top_key = kwargs['top_key']
+    else:
+        top_key = 'name'
+
+    if not subfields_on_top:
+        all_top_ids = the_output_dict.keys()
+        all_subfield_ids = set([])
+        for the_key in all_top_ids:
+            all_subfield_ids.update(set(the_output_dict[the_key].keys()))
+        all_subfield_ids = list(all_subfield_ids)
+        all_subfield_ids.sort()
+        all_top_ids.sort()
+        the_original_dict = deepcopy(the_output_dict)
+        the_output_dict = {}
+        for the_new_top_key in all_subfield_ids:
+            the_output_dict[the_new_top_key] = {}
+            for the_new_subfield_key in all_top_ids:
+                the_output_dict[the_new_top_key][the_new_subfield_key] = the_original_dict[the_new_subfield_key][the_new_top_key]
+
     # First we convert to a table to align
     # the columns
-    # First scan through and get all the keys
+    # First scan through and get all the keys                
     all_entries = the_output_dict.keys()
     all_entries.sort()    
 

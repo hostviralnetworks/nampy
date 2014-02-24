@@ -1,6 +1,7 @@
 # Full functionality of this module requires a functional rpy2 and R
 from ..core.shared_functions import test_kwarg
-mtcorrect_methods = ['"BY"', '"holm"', '"hochberg"', '"hommel"', '"bonferroni"', '"BH"', '"fdr"', '"none"']
+mtcorrect_py_2_r_names = {'none': '"none"', 'BY': '"BY"', 'holm': '"holm"', 'hochberg': '"hochberg"', 'hommel': '"hommel"', 'bonferroni': '"bonferroni"', 'BH':'"BH"', 'fdr':'"fdr"'}
+mtcorrect_methods = ['none', 'BY', 'holm', 'hochberg', 'hommel', 'bonferroni', 'BH', 'fdr']
 
 
 def mtcorrect(p_value_dict, **kwargs):
@@ -10,7 +11,7 @@ def mtcorrect(p_value_dict, **kwargs):
      p_value_dict: a dict with keys = probe names, and values of p-values
 
     kwargs:
-     method: MT correction method, from R.  See mtcorrect_methods.  Default is '"BY"'
+     method: MT correction method, from R.  See mtcorrect_methods.  Default is 'none'
       
     Returns:
      adjusted_p
@@ -27,7 +28,7 @@ def mtcorrect(p_value_dict, **kwargs):
         from rpy2.robjects import numpy2ri
         numpy2ri.activate()
     except ImportError:
-        print "networkstatistics.mtcorrect requires a functional rpy2 and R, exiting..."
+        print "ImportError: networkstatistics.mtcorrect() requires a functional rpy2 and R, exiting..."
         continue_flag = False
 
     if continue_flag:
@@ -37,7 +38,8 @@ def mtcorrect(p_value_dict, **kwargs):
         p_values_list_r = robjects.FloatVector(p_values_list)
         # need to assign the r object into the r namespace
         r.assign('p_values_list_r', p_values_list_r)
-        r('corrected_data = p.adjust(p_values_list_r, method = ' + str(method) + ')')
+        method_r = mtcorrect_py_2_r_names[method]
+        r('corrected_data = p.adjust(p_values_list_r, method = ' + str(method_r) + ')')
         adjusted_p = robjects.numpy2ri.ri2numpy(r('corrected_data'))
         adjusted_p.tolist
         adjusted_p = {id: adjusted_p[i] for i, id in enumerate(row_names)}
@@ -547,23 +549,24 @@ def enrichment_test(the_present_set, the_absent_set, the_grouping_dict, **kwargs
      filter_items: [True (default) / False]
       Whether to filter the items in the_grouping_dict and 
       the_present_set / the_absent_set so only items
-      in common are tested.  I don't see why
-      you would want to set this to false for
-      genome-scale datasets, but the option is here
-      to do so.
+      in common are tested.
      verbose: [False(default) / True]
-     method: type of mt testing to apply, default is "BY", see
+     method: type of mt testing to apply, default is "none", see
       mtcorrect() for more information
      direction: ["enrichment" (default), "depletion"]
       essentially, whether to look at the right or left tail
 
     returns:
      test_result_dict: a dict with:
-      {the grouping names: the p-values}
+      {the_grouping: {'p': the corrected p-value, 
+       'n_present':  number in the grouping that were present,
+       'n_group': the total size of the group}
        
     """
     from copy import deepcopy
     from scipy.stats import hypergeom
+
+    method = test_kwarg('method', kwargs, mtcorrect_methods)
     
     filter_items = test_kwarg('filter_items', kwargs, [True, False])
     verbose = test_kwarg('verbose', kwargs, [False, True])
@@ -585,12 +588,14 @@ def enrichment_test(the_present_set, the_absent_set, the_grouping_dict, **kwargs
         if len(the_grouping_dict[the_grouping]) == 0:
             the_grouping_dict.pop(the_grouping)
 
-    if filter_grouping_members:
+    if filter_items:
         the_present_set = the_present_set & all_grouping_items_set
         the_absent_set = the_absent_set & all_grouping_items_set
         all_test_items_set = all_test_items_set & all_grouping_items_set
 
     test_result_dict = {}
+    n_present_dict = {}
+    group_size_dict = {}
 
     for the_grouping in the_grouping_dict.keys():
         # x: number of present items in the grouping
@@ -611,11 +616,22 @@ def enrichment_test(the_present_set, the_absent_set, the_grouping_dict, **kwargs
                 the_p = 1.
         else:
             the_p = hypergeom.cdf(x,M,n,N,loc=0)
+        
         test_result_dict[the_grouping] = the_p
+        n_present_dict[the_grouping] = x
+        group_size_dict[the_grouping] = N
 
-    p_right_dict = mtcorrect(test_result_dict, method = method) 
+    corrected_p_dict = mtcorrect(test_result_dict, method = method) 
+        
+    final_result_dict = {}
+    for the_grouping in the_grouping_dict.keys():
+        final_result_dict[the_grouping] = {}
+        final_result_dict[the_grouping]['n_present'] = n_present_dict[the_grouping]
+        final_result_dict[the_grouping]['n_group'] = group_size_dict[the_grouping]
+        final_result_dict[the_grouping]['p'] = corrected_p_dict[the_grouping]
 
-    return test_result_dict
+
+    return final_result_dict
 
     
 

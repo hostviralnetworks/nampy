@@ -84,14 +84,9 @@ class Network(Object):
                 all_node_ids.append(the_node.id)
             the_nodetype.nodes._generate_index()
         self.update_matrix()
-        # TODO: add a check for multipartite networks so edges don't
-        # connect nodes of the same nodetype
-        # no, this is not right, e.g. want to allow
-        # host-host and host-virus interactions
 
 
     def convert_to_multipartite(self):
-        #
         from collections import OrderedDict
 
         if (len(self.nodetypes) == 1) & (self.nodetypes[0].id == 'monopartite'):
@@ -126,7 +121,6 @@ class Network(Object):
 
 
     def convert_to_monopartite(self):
-        #
         if (len(self.nodetypes) == 1) & (self.nodetypes[0].id == 'monopartite'):
             print "You already have a monopartite network. Exiting..."
         else:
@@ -247,7 +241,7 @@ class Network(Object):
     def copy(self):
         the_copied_network = Network(self.id)
         the_node_locations = self.get_node_locations()
-        the_nodetype_ids = the_node_locations.values()
+        the_nodetype_ids = set(the_node_locations.values())
         the_nodetype_locations = {}
         for the_nodetype_id in the_nodetype_ids:
             the_nodetype_locations[the_nodetype_id] = []
@@ -271,5 +265,6 @@ class Network(Object):
             node_pair_list[the_index] = [the_copied_network.nodetypes[0].nodes.get_by_id(x) for x in the_node_id_pair]
         the_copied_network.connect_node_pair_list(node_pair_list, the_weight_list = the_weight_list)
         for the_index, the_edge in enumerate(the_copied_network.edges):
-            the_edge.notes = the_note_list[the_index]        
+            the_edge.notes = the_note_list[the_index]
+        the_copied_network.update()
         return the_copied_network

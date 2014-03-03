@@ -385,7 +385,7 @@ def get_go_descriptions(the_go_id, **kwargs):
       just a pass-through
 
     Output:
-     the_go_x
+     the_go_string
 
     """
     continue_flag = True

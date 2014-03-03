@@ -82,15 +82,15 @@ def evaluate_reaction_pvalues(the_network, expression_dict, **kwargs):
                 if not ignore_reaction:
                     for the_gene in current_gene_list:
                         the_gene_re = re.compile('(^|(?<=( |\()))%s(?=( |\)|$))'%re.escape(the_gene.id))
-                        the_value_string = '%.10f' % reaction_gene_p_dict[the_gene.id]
+                        the_value_string = '%.12f' % reaction_gene_p_dict[the_gene.id]
                         the_gene_reaction_rule = the_gene_re.sub(the_value_string, the_gene_reaction_rule)
                     
                     reaction_pval_dict[test_reaction.id] = evaluate_expression_string(the_gene_reaction_rule)
 
-                    the_value_string = '%.10f' % reaction_pval_dict[test_reaction.id]
+                    the_value_string = '%.12f' % reaction_pval_dict[test_reaction.id]
                     reaction_dir_dict[test_reaction.id] = []
                     for test_gene in reaction_gene_p_dict.keys():
-                        test_value_string = '%.10f' % reaction_gene_p_dict[test_gene]
+                        test_value_string = '%.12f' % reaction_gene_p_dict[test_gene]
                         if the_value_string == test_value_string:
                             reaction_dir_dict[test_reaction.id] = reaction_gene_dir_dict[the_gene.id]
     return {'p': reaction_pval_dict, 'dir': reaction_dir_dict}

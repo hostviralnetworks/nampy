@@ -15,16 +15,18 @@ from nampy.statistics import networkstatistics
 data_dir = nampy.__path__[0] + '/data/'
 the_rma_values = networkio.read_table_file_to_dict(data_dir + 'GSE19392_IFNb.txt', force_to_float = True)
 
-# Prepare p-values
-# for each of the probes
+# Prepare p-values for each of the probe sets.
 # We don't need to do BH correction
 # up front since we use this as input to
 # reporter nodes, which does its own
-# normalization for the null distribution
+# normalization for the null distribution.
+# We average the later time points together,
+# which looked similar by hierarchical clustering
+# of the fold-changes.
 probe_stats_dict = {}
 for the_probe_id in the_rma_values.keys():
-    list_2 = [log2(the_rma_values[the_probe_id]['GSM528691_IFNb18hr_1']), log2(the_rma_values[the_probe_id]['GSM528692_IFNb18hr_2'])]
-    list_1 = [log2(the_rma_values[the_probe_id]['GSM528749_media18hr_1']), log2(the_rma_values[the_probe_id]['GSM528750_media18hr_2'])]
+    list_2 = [log2(the_rma_values[the_probe_id]['GSM528691_IFNb18hr_1']), log2(the_rma_values[the_probe_id]['GSM528692_IFNb18hr_2']),log2(the_rma_values[the_probe_id]['GSM528689_IFNb12hr_1']), log2(the_rma_values[the_probe_id]['GSM528690_IFNb12hr_2']),log2(the_rma_values[the_probe_id]['GSM528699_IFNb8hr_1']), log2(the_rma_values[the_probe_id]['GSM528700_IFNb8hr_2'])]
+    list_1 = [log2(the_rma_values[the_probe_id]['GSM528749_mock18hr_1']), log2(the_rma_values[the_probe_id]['GSM528750_mock18hr_2']),log2(the_rma_values[the_probe_id]['GSM528747_mock12hr_1']), log2(the_rma_values[the_probe_id]['GSM528748_mock12hr_2']),log2(the_rma_values[the_probe_id]['GSM528757_mock8hr_1']), log2(the_rma_values[the_probe_id]['GSM528758_mock8hr_2'])]
     the_result = networkstatistics.t_uneqvar(list_1, list_2)
     probe_stats_dict[the_probe_id] = the_result
 
@@ -41,7 +43,7 @@ for the_probe_id in the_probe_key_gene_value_dict.keys():
     the_line = the_line.split(' /// ')
     the_probe_key_gene_value_dict[the_probe_id] = the_line
 
-# Combine p-values for 1 gene : many probes using Stouffer's method
+# Combine p-values for 1 gene : many probe-sets using Stouffer's method
 aggregated_pvalue_dict = networkstatistics.aggregate_probe_statistics_to_gene(probe_stats_dict, the_probe_key_gene_value_dict, aggregation_type = 'stouffer')
 
 # Let's work with recon 1 from:
@@ -103,12 +105,10 @@ for the_transcript_id in the_transcript_pval_dict.keys():
 # Corrected p's.  Note reporters are already corrected by their null distribution.
 # We will split transcript and reaction p's for bh adjustment since we
 # have a distinct fdr correction for each nodetype and for the edges
-# We also will want to make a judicious selection of cutoff p since
-# we only have 2 replicates to establish statistics.
 from nampy.statistics import networkstatistics
 node_property_dict['corrected_p_reporter'] = deepcopy(the_reporter_dict['p_values'])
-node_property_dict['corrected_p_gene'] = (networkstatistics.mtcorrect(transcript_uncorrected_p, method = '"BH"'))
-node_property_dict['corrected_p_reaction'] = (networkstatistics.mtcorrect(hyperedge_score_dict['p'], method = '"BH"'))
+node_property_dict['corrected_p_gene'] = (networkstatistics.mtcorrect(transcript_uncorrected_p, method = 'BH'))
+node_property_dict['corrected_p_reaction'] = (networkstatistics.mtcorrect(hyperedge_score_dict['p'], method = 'BH'))
 the_reactions = node_property_dict['corrected_p_reaction'].keys()
 the_metabolites = node_property_dict['corrected_p_reporter'].keys()
 
@@ -168,10 +168,7 @@ cytoscapeio.write_node_attributes_to_textfile(the_network, properties_dict = nod
 # available for viewing.
 
 # Optionally, check the histograms for 
-# the reporters to pick out cutoffs
+# the reporter p-values. 
 # You'll need matplotlib for this.
 hist(node_property_dict['corrected_p_reporter'].values(),100)
-# A ctuoff around 0.05 appears OK
 hist(node_property_dict['corrected_p_reaction'].values(),100)
-# We won't cut out reactions based on p but we will visualize up/down in cytoscape
-# Note N is only 2 replicates for the examples here.

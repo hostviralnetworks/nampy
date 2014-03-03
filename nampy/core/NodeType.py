@@ -64,10 +64,10 @@ class NodeType(Object):
             the_node_list = [self.nodes.get_by_id(the_node) for the_node in the_node_list]
         else:
             # refilter these to make sure references are OK
-            the_edge_list = [self.nodes.get_by_id(x.id) for x in the_node_list]
+            the_node_list = [self.nodes.get_by_id(x.id) for x in the_node_list]
         edges_to_remove = set([])
         for the_node in the_node_list:
-            for the_edge in the_node._edges:
+            for the_edge in the_node.get_edges():
                 edges_to_remove.add(the_edge)
             setattr(the_node, '_network', None)
             setattr(the_node, '_nodetype', None)

@@ -111,7 +111,7 @@ def write_network_textfile(the_network, **kwargs):
 
 
 
-        write_dict_to_textfile(the_network.id + '_network_table.txt', the_output_dict, 'model_edge_id')
+        write_dict_to_textfile(the_network.id + '_network_table.txt', the_output_dict, top_key = 'model_edge_id', subfields_on_top = True)
             
         
 def write_node_attributes_to_textfile(the_network, **kwargs):
@@ -202,6 +202,6 @@ def write_node_attributes_to_textfile(the_network, **kwargs):
                 if the_id in the_output_dict.keys():
                     the_output_dict[the_id][the_property] = properties_dict[the_property][the_id]
 
-        write_dict_to_textfile(the_network.id + '_node_attribute_table.txt', the_output_dict, 'node_id')
+        write_dict_to_textfile(the_network.id + '_node_attribute_table.txt', the_output_dict, top_key = 'node_id', subfields_on_top = True)
 
 

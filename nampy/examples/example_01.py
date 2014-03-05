@@ -20,17 +20,7 @@ humannet = networkio.create_network_model_from_textfile('humannet', network_file
 # so ncbi can contact you if there are issues with the query
 # Note there may some errors returned while querying but 
 # each query is generally successful within the three tries.
-humannet = idmapping.get_more_node_ids(humannet, node_id_type = "Entrez Gene (GeneID)", mapping_types = ['Entrez Gene (GeneID)', "UniProtKB ACC", 'UniProtKB ID'], verbose = True)
-
-# Note we may miss a few this way, make sure we at least get all of the Entrez Gene IDs
-# e.g. the database might not requrn the id's we query with
-counter = 0
-# Just have one nodetype
-for the_node in humannet.nodetypes[0].nodes:
-    if len(the_node.notes["Entrez Gene (GeneID)"]) == 0:
-        the_node.notes["Entrez Gene (GeneID)"].append(the_node.id)
-        counter +=1
-print(counter)
+humannet = idmapping.get_more_node_ids(humannet, node_id_type = "Entrez Gene (GeneID)", mapping_types = ['Entrez Gene (GeneID)', "UniProtKB ACC", 'UniProtKB ID', 'Symbol'], verbose = True)
 
 # APMS host targets from
 # Jäger, S., Cimermancic, P., Gulbahce, N., Johnson, J. R., McGovern, K. E., Clarke, S. C.,
@@ -40,12 +30,15 @@ hiv_apms_file = data_dir + "published_hiv_apms_factors.txt"
 apms_source = networkio.create_source_dict_from_textfile(hiv_apms_file)
 
 apms_source_dict = idmapping.get_more_source_dict_ids(apms_source, "UniProtKB ACC/ID", mapping_types = ["Entrez Gene (GeneID)", "UniProtKB ACC", "UniProtKB ID"])
+# Make sure note to lose information in the UniProt query.
+# get_more_source_dict_ids didn't check this since
+# we don't specify "UniProtKB ACC" or "UniProtKB ID"
+# for UniProt queries
 counter = 0
 for the_key in apms_source_dict.keys():
     if len(apms_source_dict[the_key]["UniProtKB ACC"]) == 0:
         apms_source_dict[the_key]["UniProtKB ACC"].append(the_key)
         counter +=1
-print(counter)
 
 humannet, id_matching_dict = manipulation.add_source(humannet, apms_source_dict, match_key_type = 'Entrez Gene (GeneID)')
 
@@ -62,5 +55,5 @@ ttp_dict, side_dict = networkstatistics.get_pvalue_from_scores(the_result, the_p
 otp_dict = networkstatistics.ttp_to_otp(ttp_dict, side_dict)
 
 # This is the dict of p-values from the propagations...
-otp_dict_corrected = networkstatistics.mtcorrect(otp_dict, method = '"BH"')
+otp_dict_corrected = networkstatistics.mtcorrect(otp_dict, method = 'BH')
  

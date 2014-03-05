@@ -4,27 +4,8 @@ from ..core.parameters import available_mapping_target, available_mapping_source
 
 default_mapping_target_list = ["UniProtKB ACC", 
     "UniProtKB ID",
-    "EMBL/GenBank/DDBJ",
-    "EMBL/GenBank/DDBJ CDS",
-    "UniGene",
     "Entrez Gene (GeneID)",
-    "GI number*", 
-    "RefSeq Protein",
-    "RefSeq Nucleotide",
-    "PDB",
-    "Ensembl",
-    "Ensembl Protein",
-    "Ensembl Transcript",
-    "Ensembl Genomes",
-    "Ensembl Genomes Protein",
-    "Ensembl Genomes Transcript",
-    "KEGG",
-    "PATRIC",
-    "GeneCards",
-    "BioCyc",
-    "DrugBank",
-    "GenomeRNAi",
-    "NextBio"]
+    "Symbol"]
 
 
 def get_more_node_ids(the_network, **kwargs):
@@ -36,10 +17,15 @@ def get_more_node_ids(the_network, **kwargs):
 
     kwargs:
      node_id_type: current type of ids used for the nodes.
-      Currently can be Entrez Gene (GeneID) or any of the 
+      Currently can be 'Entrez Gene (GeneID)' or any of the 
       options in the BioServices UniProt mappings
-     mapping_types: a list of target mapping id types to include
-     verbose:
+     mapping_types: a list of target mapping id types to include.
+      Options can be viewed in core.parameters.py
+      Note "Symbol" is an additional option for the
+      officieal gene nomenclature symbol.
+     email: optional, for NCBI queries.
+     verbose: [True (default), False]
+     
 
     Returns:
      the_network 
@@ -49,6 +35,8 @@ def get_more_node_ids(the_network, **kwargs):
                   
     """
     continue_flag = True
+    valid_mapping_targets = available_mapping_target.keys() + ['Symbol']
+    verbose = test_kwarg('verbose', kwargs, [True, False])
 
     try:
         from bioservices import UniProt
@@ -65,15 +53,31 @@ def get_more_node_ids(the_network, **kwargs):
 
     if 'node_id_type' in kwargs:
         node_id_type = kwargs['node_id_type'] 
+        if node_id_type == 'Symbol':
+            if verbose:
+                print "'Symbol' is a special case, not yet able to query with this option, exiting..."
+            continue_flag = False            
     else:
-        node_id_type = "Entrez Gene (GeneID)"
+        if verbose:
+            print "No node id type specified, attempting to use 'Entrez Gene (GeneID)'"
+        node_id_type = 'Entrez Gene (GeneID)'
 
     if 'mapping_types' in kwargs:
-        mapping_types = kwargs['mapping_types'] 
+        mapping_types = [x for x in kwargs['mapping_types'] if x in valid_mapping_targets]
+        if len(mapping_types) == 0:
+            print('No valid mapping_types selected, exiting...')
+            continue_flag = False
+        elif 'Symbol' in mapping_types:
+            if (('Entrez Gene (GeneID)' not in mapping_types) & (node_id_type != 'Entrez Gene (GeneID)')):
+                print "'Symbol' mapping type needs 'Entrez Gene (GeneID)', exiting..."
+                continue_flag = False
     else:
         mapping_types = default_mapping_target_list
 
-    verbose = test_kwarg('verbose', kwargs, [True, False])
+    if 'email' in kwargs:
+        email = kwargs['email'] 
+    else:
+        email = ''
 
     # Maximum number of items to
     # query at a time 
@@ -87,19 +91,20 @@ def get_more_node_ids(the_network, **kwargs):
     if continue_flag:
         query_string = ''
         model_node_ids = []
+        model_nodes = []
         for the_nodetype in the_network.nodetypes:
-            model_node_ids += [x.id for x in the_nodetype.nodes]
+            model_nodes += [x for x in the_nodetype.nodes]
 
         the_node_id_list_list = [[]]
         i = 0
         j = 0
-        for the_node_id in model_node_ids:
+        for the_node in model_nodes:
             if (j + 1) % max_query_length == 0:
                 the_node_id_list_list.append([])
                 i += 1
                 the_node_id_list_list[i] = []
                 j = 0
-            the_node_id_list_list[i].append(the_node_id)
+            the_node_id_list_list[i].append(the_node.id)
             j += 1
 
         query_string_list = []
@@ -114,13 +119,13 @@ def get_more_node_ids(the_network, **kwargs):
 
         
         for the_target_type in mapping_types:
-            the_result = {}
-            for the_query_string in query_string_list:
-                the_result.update(u.mapping(fr = available_mapping_source[node_id_type], to = available_mapping_target[the_target_type], query = the_query_string))
-            if verbose:
-                print("**Finished mapping for %s to %s.**" % (node_id_type, the_target_type))
-            for the_nodetype in the_network.nodetypes:
-                for the_node in the_nodetype.nodes:
+            if the_target_type != 'Symbol':
+                the_result = {}
+                for the_query_string in query_string_list:
+                    the_result.update(u.mapping(fr = available_mapping_source[node_id_type], to = available_mapping_target[the_target_type], query = the_query_string))
+                if verbose:
+                    print("**Finished mapping for %s to %s.**" % (node_id_type, the_target_type))
+                for the_node in model_nodes:
                     if (the_node.id in the_result.keys()):
                         if len(the_result[the_node.id]) > 0:
                             the_node.notes[the_target_type] = the_result[the_node.id]
@@ -129,24 +134,66 @@ def get_more_node_ids(the_network, **kwargs):
                     else:
                         the_node.notes[the_target_type] = []
 
+        # To avoid a loss of information, we should also make 
+        # sure queried IDs are returned in the appropriate 
+        # field in case they weren't available in the database.
+        if node_id_type in mapping_types:
+            # Not yet supported anyway, but can leave this here.
+            if node_id_type != 'Symbol':
+                for the_node in model_nodes:
+                    if the_node.id not in the_node.notes[node_id_type]:
+                        the_node.notes[node_id_type].append(the_node.id)
+                    
+        if "Symbol" in mapping_types:
+            if ((node_id_type == "Entrez Gene (GeneID)") | ("Entrez Gene (GeneID)" in mapping_types)):
+                the_entrez_to_query = []
+                query_dict = {}
+                for the_node in model_nodes:
+                    query_dict[the_node.id] = {}
+                    query_dict[the_node.id]["Entrez Gene (GeneID)"] = []
+                    if node_id_type == "Entrez Gene (GeneID)":
+                        query_dict[the_node.id]["Entrez Gene (GeneID)"].append(the_node.id)
+                    if "Entrez Gene (GeneID)" in mapping_types:
+                        the_entrez_list = the_node.notes["Entrez Gene (GeneID)"]
+                        if len(the_entrez_list) > 0:
+                            for the_entrez_id in the_entrez_list:
+                                if the_entrez_id not in query_dict[the_node.id]["Entrez Gene (GeneID)"]:
+                                    query_dict[the_node.id]["Entrez Gene (GeneID)"].append(the_entrez_id)
+                    the_entrez_to_query += query_dict[the_node.id]["Entrez Gene (GeneID)"]
+                the_entrez_to_query = list(set(the_entrez_to_query))
+                the_symbol_dict = get_entrez_annotation(the_entrez_to_query, email = email, verbose = verbose)
+                for the_node in model_nodes:
+                    the_node.notes["Symbol"] = []
+                    for the_entrez_id in query_dict[the_node.id]["Entrez Gene (GeneID)"]:
+                        the_symbol_id = the_symbol_dict[the_entrez_id]['NomenclatureSymbol']
+                        if len(the_symbol_id) > 0:
+                            the_node.notes["Symbol"].append(the_symbol_id)
+                print("**Finished mapping for %s to %s.**" % (node_id_type, "Symbol"))
+            elif verbose:
+                print "'Entrez Gene (GeneID)' mappings are needed first in order to query symbols, skipping..."
+
     return the_network
 
 
 
-def get_more_source_dict_ids(source_dict, primary_key, **kwargs):
+def get_more_source_dict_ids(source_dict, primary_key_type, **kwargs):
     """ Script to add more ids to source dict nodes
     to facilitate pairing to a network
 
     Arguments:
      source_dict: id_key: value
 
-     primary_key: current type of ids used for the nodes.
+     primary_key: current type of ids used for the top level dict key.
       Currently can be 'Entrez Gene (GeneID)' or any of the options 
       in the BioServices UniProt mappings.
 
     kwargs:
-     mapping_types: a list of mapping types to include
-     verbose
+     mapping_types: a list of mapping types to include.
+      See core.parameters for the full list.  Note
+      'Symbol' is a special case for querying that depends
+       on Entrez ID availability.
+     verbose: [False (default), True]
+     email: optional, for NCBI if querying for 'Symbol'
 
     Returns:
      source_dict, also modified in place
@@ -155,16 +202,32 @@ def get_more_source_dict_ids(source_dict, primary_key, **kwargs):
     """
 
     continue_flag = True
+    verbose = test_kwarg('verbose', kwargs, [False, True])
+    valid_mapping_targets = available_mapping_target.keys() + ['Symbol']
 
-    file_key = primary_key
-    if primary_key not in available_mapping_source.keys():
-        continue_flag = False
-        print "Error, you must specify a valid primary_key descriptor to match to in the available database, exiting..."
+    if primary_key_type not in available_mapping_source.keys():
+        if primary_key_type == 'Symbol':
+            if verbose:
+                print "'Symbol' is a special case, not yet able to query with this as a primary key."
+            print "Error, you must specify a valid primary_key_type descriptor to match to in the available database, exiting..."
+        continue_flag = False   
 
     if 'mapping_types' in kwargs:
-        mapping_types = kwargs['mapping_types'] 
+        mapping_types = [x for x in kwargs['mapping_types'] if x in valid_mapping_targets]
+        if len(mapping_types) == 0:
+            print('No valid mapping_types selected, exiting...')
+            continue_flag = False
+        elif 'Symbol' in mapping_types:
+            if (('Entrez Gene (GeneID)' not in mapping_types) & (primary_key_type != 'Entrez Gene (GeneID)')):
+                print "'Symbol' mapping type needs 'Entrez Gene (GeneID)', exiting..."
+                continue_flag = False
     else:
         mapping_types = default_mapping_target_list
+
+    if 'email' in kwargs:
+        email = kwargs['email'] 
+    else:
+        email = ''
 
     try:
         from bioservices import UniProt
@@ -173,15 +236,6 @@ def get_more_source_dict_ids(source_dict, primary_key, **kwargs):
         print("No BioServices module installed or cannot connect, exiting...")
         print("e.g. if you are using pip, did you 'pip install bioservices'?")
         continue_flag = False
-
-    verbose = test_kwarg('verbose', kwargs, [False, True])
-
-    if 'node_id_type' in kwargs:
-        node_id_type = kwargs['node_id_type'] 
-    else:
-        node_id_type = "Entrez Gene (GeneID)"
-
-    verbose = test_kwarg('verbose', kwargs, [False, True])
 
     # Maximum number of items to
     # query at a time 
@@ -223,19 +277,59 @@ def get_more_source_dict_ids(source_dict, primary_key, **kwargs):
                 source_dict[the_key]['value'] = the_value
                 
         for the_target_type in mapping_types:
-            the_result = {}
-            for the_query_string in the_query_string_list:
-                the_result.update(u.mapping(fr = available_mapping_source[file_key], to = available_mapping_target[the_target_type], query = the_query_string))
-            if verbose:
-                print("** Finished mapping for %s to %s. **" % (file_key, the_target_type))
-            for the_query_id in source_dict.keys():
-                if the_query_id in the_result.keys():
-                    if len(the_result[the_query_id]) > 0:
-                        source_dict[the_query_id][the_target_type] = the_result[the_query_id]
+            if the_target_type != 'Symbol':
+                the_result = {}
+                for the_query_string in the_query_string_list:
+                    the_result.update(u.mapping(fr = available_mapping_source[primary_key_type], to = available_mapping_target[the_target_type], query = the_query_string))
+                if verbose:
+                    print("** Finished mapping for %s to %s. **" % (primary_key_type, the_target_type))
+                for the_query_id in source_dict.keys():
+                    if the_query_id in the_result.keys():
+                        if len(the_result[the_query_id]) > 0:
+                            source_dict[the_query_id][the_target_type] = the_result[the_query_id]
+                        else:
+                            source_dict[the_query_id][the_target_type] = []
                     else:
                         source_dict[the_query_id][the_target_type] = []
-                else:
-                    source_dict[the_query_id][the_target_type] = []
+
+        # To avoid a loss of information, we should also make 
+        # sure queried IDs are returned in the appropriate 
+        # field in case they weren't available in the database.
+        if primary_key_type in mapping_types:
+            # Not yet supported but we can check to avoid breaking this
+            if primary_key_type != 'Symbol':
+                for the_source_dict_id in source_dict.keys():
+                    if the_source_dict_id not in source_dict[the_source_dict_id][primary_key_type]:
+                        source_dict[the_source_dict_id][primary_key_type].append(the_source_dict_id)
+                    
+        if "Symbol" in mapping_types:
+            if ((primary_key_type == "Entrez Gene (GeneID)") | ("Entrez Gene (GeneID)" in mapping_types)):
+                the_entrez_to_query = []
+                # Make query_dict in case "Entrez Gene (GeneID)" was 
+                # a primary_key_type but not in mapping_types
+                query_dict = {}
+                for the_source_dict_id in source_dict.keys():
+                    query_dict[the_source_dict_id] = {}
+                    query_dict[the_source_dict_id]["Entrez Gene (GeneID)"] = []
+                    if primary_key_type == "Entrez Gene (GeneID)":
+                        query_dict[the_source_dict_id]["Entrez Gene (GeneID)"].append(the_source_dict_id)
+                    if "Entrez Gene (GeneID)" in mapping_types:
+                        the_entrez_list = source_dict[the_source_dict_id]["Entrez Gene (GeneID)"]
+                        if len(the_entrez_list) > 0:
+                            for the_entrez_id in the_entrez_list:
+                                if the_entrez_id not in query_dict[the_source_dict_id]["Entrez Gene (GeneID)"]:
+                                    query_dict[the_source_dict_id]["Entrez Gene (GeneID)"].append(the_entrez_id)
+                    the_entrez_to_query += query_dict[the_source_dict_id]["Entrez Gene (GeneID)"]
+                the_entrez_to_query = list(set(the_entrez_to_query))
+                the_symbol_dict = get_entrez_annotation(the_entrez_to_query, email = email, verbose = verbose)
+                for the_source_dict_id in source_dict.keys():
+                    source_dict[the_source_dict_id]["Symbol"] = []
+                    for the_entrez_id in query_dict[the_source_dict_id]["Entrez Gene (GeneID)"]:
+                        the_symbol_id = the_symbol_dict[the_entrez_id]['NomenclatureSymbol']
+                        if len(the_symbol_id) > 0:
+                            source_dict[the_source_dict_id]["Symbol"].append(the_symbol_id)
+                print("**Finished mapping for %s to %s.**" % (primary_key_type, "Symbol"))
+                        
 
     return source_dict
 
@@ -253,7 +347,7 @@ def get_entrez_annotation(id_list, **kwargs):
      id_list: a list of Entrez id's each as a string
      
     kwargs:
-     e-mail: for ncbi
+     email: for ncbi
 
     Returns: 
      annotations: a dict of Entrez annotations 
@@ -289,10 +383,10 @@ def get_entrez_annotation(id_list, **kwargs):
             try:
                 result = Entrez.read(request)
 
-                webEnv = result["WebEnv"]
-                queryKey = result["QueryKey"]
-                data = Entrez.esummary(db="gene", webenv=webEnv, query_key =
-                                   queryKey)
+                webenv = result["WebEnv"]
+                query_key = result["QueryKey"]
+                data = Entrez.esummary(db="gene", webenv=webenv, query_key =
+                                   query_key)
                 annotation_list = Entrez.read(data)
             
                 for the_entry in annotation_list:
@@ -402,6 +496,7 @@ def get_go_descriptions(the_go_id, **kwargs):
     if continue_flag:
         the_go_bs = go.Term(the_go_id)
 
+        # bs for beautiful_soup
         for the_header in the_go_bs.getchildren():
             if the_header.tag == 'term':
                 for the_entry in the_header.getchildren():

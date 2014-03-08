@@ -424,7 +424,7 @@ def merge_networks_by_node(the_first_network, the_second_network, new_network_id
     return the_network
 
 
-def make_subnetwork(the_network, the_node_id_list, id):
+def make_subnetwork(the_network, the_node_id_list, the_id):
     """ Make an independent network that
     is a subset of network components consisting of the
     node ids in the node_id_list and any edges
@@ -432,8 +432,8 @@ def make_subnetwork(the_network, the_node_id_list, id):
 
     Arguments:
      the_network: a NAMpy network object
-     the_node_id_list: a list of node ids
-     id: an id for the new "sub" network.
+     the_node_id_list: a list of node ids (not node objects)
+     the_id: an id string for the new "sub" network.
 
     Returns:
      the_subnetwork: a new network object that has the
@@ -441,9 +441,22 @@ def make_subnetwork(the_network, the_node_id_list, id):
 
     """
     from ..core.Network import Network
-    the_subnetwork = Network(id)
-    the_node_locations = the_network.get_node_locations()
+    from ..core.Node import Node
+
+    # A quick fix up to be nice for those that insist on using Node objects
     nodes_to_pop = []
+    ids_to_add = []
+    for the_index, the_node_id in enumerate(the_node_id_list):
+        if type(the_node_id) == Node:
+            nodes_to_pop.append(the_node_id)
+            ids_to_add.append(the_node_id.id)
+    for the_node in nodes_to_pop:
+        the_index = the_node_id_list.index(the_node)
+        the_node_id_list.pop(the_index)
+    the_node_id_list += ids_to_add
+            
+    the_subnetwork = Network(the_id)
+    the_node_locations = the_network.get_node_locations()
     the_node_id_list = [x for x in the_node_id_list if x in the_node_locations.keys()]
     node_ids_to_remove = [x for x in the_node_locations.keys() if x not in the_node_id_list]
     for the_node_id in node_ids_to_remove:

@@ -1,6 +1,6 @@
 from ..core.shared_functions import test_kwarg
 from ..core.parameters import edge_id_separator
-
+from ..core.shared_functions import test_kwarg
 
 def write_network_textfile(the_network, **kwargs):
     """ Write a simple tab-delimited textfile that can serve as
@@ -128,6 +128,10 @@ def write_node_attributes_to_textfile(the_network, **kwargs):
       each key corresponding to a node ID.
      exclude_nodetypes: a list of nodetypes to avoid 
       including in the output.
+     replace_lists: [True (default), False]
+      if True, node notes that cannot be converted to
+      1 element strings will be converted to strings
+      with list items separated by '|'
      
 
     """
@@ -135,6 +139,7 @@ def write_node_attributes_to_textfile(the_network, **kwargs):
     from ..core import NodeType
     continue_flag = True
 
+    replace_lists = test_kwarg('replace_lists', kwargs, [True, False])
     
     if 'properties_dict' in kwargs:
         properties_dict = kwargs['properties_dict']
@@ -170,9 +175,6 @@ def write_node_attributes_to_textfile(the_network, **kwargs):
             list_note_keys = set([])
             one_element_note_keys = set([])
 
-
-
-            
             for the_node in the_nodetype.nodes:
                 if the_node.id in the_node_ids:
                     for the_key in the_node.notes.keys():
@@ -189,7 +191,16 @@ def write_node_attributes_to_textfile(the_network, **kwargs):
                 if the_node.id in the_node_ids:
                     for the_key in the_node.notes.keys():
                         if the_key in list_note_keys:
-                            the_output_dict[the_node.id][the_key] = the_node.notes[the_key]
+                            if not replace_lists:
+                                the_output_dict[the_node.id][the_key] = the_node.notes[the_key]
+                            else:
+                                the_string_to_add = ''
+                                for the_index, the_item in enumerate(the_node.notes[the_key]):
+                                    if the_index > 0:
+                                        the_string_to_add += '|'
+                                    the_string_to_add += the_item
+                                the_output_dict[the_node.id][the_key] = the_string_to_add
+                                
                         elif the_key in one_element_note_keys:
                             if len(the_node.notes[the_key]) == 1:
                                 the_output_dict[the_node.id][the_key] = the_node.notes[the_key][0]

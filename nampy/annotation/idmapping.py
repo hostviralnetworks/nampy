@@ -40,7 +40,8 @@ def get_more_node_ids(the_network, **kwargs):
 
     try:
         from bioservices import UniProt
-        u = UniProt(verbose=False)
+        # Don't want verbosity at this low of a level
+        u = UniProt(verbose = False)
     except:
         print("No bioservices module installed or cannot connect, exiting...")
         print("e.g. if you are using pip, did you 'pip install bioservices'?")
@@ -54,12 +55,10 @@ def get_more_node_ids(the_network, **kwargs):
     if 'node_id_type' in kwargs:
         node_id_type = kwargs['node_id_type'] 
         if node_id_type == 'Symbol':
-            if verbose:
-                print "'Symbol' is a special case, not yet able to query with this option, exiting..."
+            print "'Symbol' is a special case, not yet able to query with this option, exiting..."
             continue_flag = False            
     else:
-        if verbose:
-            print "No node id type specified, attempting to use 'Entrez Gene (GeneID)'"
+        print "No node id type specified, attempting to use 'Entrez Gene (GeneID)'"
         node_id_type = 'Entrez Gene (GeneID)'
 
     if 'mapping_types' in kwargs:
@@ -207,8 +206,7 @@ def get_more_source_dict_ids(source_dict, primary_key_type, **kwargs):
 
     if primary_key_type not in available_mapping_source.keys():
         if primary_key_type == 'Symbol':
-            if verbose:
-                print "'Symbol' is a special case, not yet able to query with this as a primary key."
+            print "'Symbol' is a special case, not yet able to query with this as a primary key."
             print "Error, you must specify a valid primary_key_type descriptor to match to in the available database, exiting..."
         continue_flag = False   
 
@@ -231,7 +229,8 @@ def get_more_source_dict_ids(source_dict, primary_key_type, **kwargs):
 
     try:
         from bioservices import UniProt
-        u = UniProt(verbose=False)
+        # Don't want verbosity at this low of a level
+        u = UniProt(verbose = False)
     except ImportError:
         print("No BioServices module installed or cannot connect, exiting...")
         print("e.g. if you are using pip, did you 'pip install bioservices'?")
@@ -409,8 +408,8 @@ def get_entrez_annotation(id_list, **kwargs):
         return {}
 
 
-def get_go_terms(uniprot_acc_id, **kwargs):
-    """ Query for GO terms given a 'UniProt ACC'.
+def get_go_ids(uniprot_acc_id, **kwargs):
+    """ Query for GO ids given a 'UniProt ACC'.
 
     Arguments: 
      uniprot_acc_id: UniProt accession identifier
@@ -419,22 +418,24 @@ def get_go_terms(uniprot_acc_id, **kwargs):
       get_descriptions: [True (default), False]
        whether to get include descriptions for the
        GO terms.
-
+      
     Output:
      the_go_terms: a list if get_descriptions == False
       or a dict if get_descriptions == True
 
     """
-    continue_flag = True
-    get_descriptions = test_kwarg('get_descriptions', kwargs, [True, False])
 
     try:
         from bioservices import QuickGO
-        go = QuickGO(verbose=False)
+        # We really don't want verbosity at this low level.
+        go = QuickGO(verbose = False)
     except ImportError:
         print("No BioServices module installed or cannot connect, exiting...")
         print("e.g. if you are using pip, did you 'pip install bioservices'?")
         continue_flag = False
+    
+    continue_flag = True
+    get_descriptions = test_kwarg('get_descriptions', kwargs, [True, False])
 
     if not get_descriptions:
         the_go_terms = []
@@ -469,24 +470,26 @@ def get_go_terms(uniprot_acc_id, **kwargs):
 
 
 
-def get_go_descriptions(the_go_id, **kwargs):
-    """ Query for GO descriptions given a GO identifier.
+def get_go_terms(the_go_id, **kwargs):
+    """ Query for GO terms given a GO identifier.
 
     Arguments: 
      go_id: A valid GO identifier of the form: 'GO:XXXXXXX'
 
      kwargs:
-      just a pass-through
+      just a pass through
 
     Output:
      the_go_string
 
     """
+    verbose = test_kwarg('verbose', kwargs, [True, False])
     continue_flag = True
 
     try:
         from bioservices import QuickGO
-        go = QuickGO(verbose=False)
+        # We really don't want verbosity at this low level.
+        go = QuickGO(verbose = False)
     except ImportError:
         print("No BioServices module installed or cannot connect, exiting...")
         print("e.g. if you are using pip, did you 'pip install bioservices'?")
@@ -517,3 +520,112 @@ def get_go_descriptions(the_go_id, **kwargs):
                     # the_entry.text
 
     return the_go_string
+
+
+def get_node_go_ids(the_network, **kwargs):
+    """ Add Gene Ontology controlled vocabulary IDs and 
+    terms to network nodes based on 'UniProtKB ACC'.
+
+    Arguments: 
+     the_network.  Note the_network must include 
+      a notes field titled 'UniProtKB ACC' in order
+      to get go terms for the node.
+
+    kwargs:
+     verbose: [True (default), False]
+     include_term: [True (default), False]
+
+    Returns:
+     the_network: modified in place.  Note that
+     all 'GO ID' fields and 'GO Term' fields will be
+     overwritten for all network nodes.
+     
+
+    """
+    continue_flag = True
+    verbose = test_kwarg('verbose', kwargs, [True, False])
+    include_term = test_kwarg('include_term', kwargs, [True, False])
+    # For argument passing
+    kwargs['include_term'] = True
+
+    the_node_locations = the_network.get_node_locations()
+    if len(the_node_locations) == 0:
+        print 'The network has no nodes, exiting...'
+        continue_flag = False
+
+    the_uniprot_id_key_node_list_value_dict = {}
+    for the_nodetype in the_network.nodetypes:
+        for the_node in the_nodetype.nodes:
+            if 'UniProtKB ACC' in the_node.notes.keys():
+                if len(the_node.notes['UniProtKB ACC']) > 0:
+                    for the_uniprot_id in the_node.notes['UniProtKB ACC']:
+                        if len(the_uniprot_id) > 0:
+                            # used_uniprot_ids.add(the_uniprot_id)
+                            if the_uniprot_id not in the_uniprot_id_key_node_list_value_dict.keys():
+                                the_uniprot_id_key_node_list_value_dict[the_uniprot_id] = []
+                            the_uniprot_id_key_node_list_value_dict[the_uniprot_id].append(the_node)
+
+    uniprot_id_list = the_uniprot_id_key_node_list_value_dict.keys()
+    the_n_uniprot_ids = len(uniprot_id_list)
+    if the_n_uniprot_ids > 50:
+        if verbose:
+            print "Warning, querying for GO ID's is currently done individually.  It is recommended to use get_node_go_ids() with smaller networks.  There are currently %i terms to query." %(the_n_uniprot_ids)
+
+    uniprot_ids_without_go = set([])
+    the_uniprot_key_golist_value_dict = {}
+    the_go_description_dict = {}
+    for the_index, the_uniprot_id in enumerate(uniprot_id_list):
+        try_flag = True
+        try_counter = 1
+        while try_flag:
+            try:
+                current_go_dict = get_go_ids(the_uniprot_id, **kwargs)
+                if len(current_go_dict.keys()) > 0:
+                    the_uniprot_key_golist_value_dict[the_uniprot_id] = current_go_dict.keys()
+                    the_go_description_dict.update(current_go_dict)
+                else:
+                    uniprot_ids_without_go.add(the_uniprot_id)
+                if verbose:
+                    if (the_index + 1) % 100 == 0:
+                        print 'Completed %i of %i.' %(the_index + 1, the_n_uniprot_ids)
+                try_flag = False
+            except:
+                try_counter += 1
+            if try_counter > 10:
+                try_flag = False
+                if verbose:
+                    print 'Unable to retrieve GO ID for %s.' %(the_uniprot_id)
+                uniprot_ids_without_go.add(the_uniprot_id)
+
+    uniprot_id_list = list(set(uniprot_id_list) - uniprot_ids_without_go)
+    nodes_with_go_id = set([])
+    for the_uniprot_id in uniprot_id_list:
+        the_go_list = the_uniprot_key_golist_value_dict[the_uniprot_id]
+        #for the_go_id in the_go_list:
+        #    the_go_id_key_term_value_dict = the_go_description_dict[the_go_id]
+        for the_node in the_uniprot_id_key_node_list_value_dict[the_uniprot_id]:
+            nodes_with_go_id.add(the_node)
+            # Overwrite existing IDs
+            the_node.notes['GO ID'] = set([])
+            for the_go_id in the_go_list:
+                the_node.notes['GO ID'].add(the_go_id)
+
+    for the_node in nodes_with_go_id:
+        the_node.notes['GO ID'] = list(the_node.notes['GO ID'])
+        the_node.notes['GO ID'].sort()
+        the_node.notes['GO Term'] = []
+        for the_go_id in the_node.notes['GO ID']:
+            the_node.notes['GO Term'].append(the_go_description_dict[the_go_id])
+        if not include_term:
+            the_node.notes.pop('GO Term')
+
+    # Assign empty lists to remaining nodes
+    for the_nodetype in the_network.nodetypes:
+        for the_node in the_nodetype.nodes:
+            if the_node not in nodes_with_go_id:
+                the_node.notes['GO ID'] = []
+                the_node.notes['GO Term'] = []
+                if not include_term:
+                    the_node.notes.pop('GO Term')
+
+    return the_network

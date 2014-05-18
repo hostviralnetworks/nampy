@@ -207,12 +207,16 @@ def save_prince_result(the_network, result_dict, permutation_dict, filename, pat
 
 
 def load_prince_result(the_network, filename, path = ""):
-    """ Load sampling objects from files
+    """ Load prince results from files
 
     Arguments:
      the_network: needed to assign ids to the result.
+     filename: the name of the file to load.  *.npy is
+      automatically appended.
+    kwargs:
+     path
 
-    
+     
     """
     from numpy import load
 
@@ -222,7 +226,9 @@ def load_prince_result(the_network, filename, path = ""):
     elif (the_network.nodetypes[0].id != 'monopartite'):
         print("Convert to monopartite network first.")
         return {}, {}
-    
+
+    if not filename.endswith(".npy"):
+        filename += ".npy"
     result_matrix = load(path + filename)
 
     n_rows, n_cols = result_matrix.shape

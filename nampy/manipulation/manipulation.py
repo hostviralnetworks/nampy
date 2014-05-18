@@ -13,6 +13,9 @@ def add_source(the_network, source_dict, **kwargs):
     kwargs:
      match_key_type: the key in the source_dict to use to make
       matches to the model.  If 'default', ids are used.
+     reset_source: [True, False (Default)] force a reset of all 
+      sources to zero before assigning new values.
+      
 
     Returns a tuple:
      the_network
@@ -28,6 +31,8 @@ def add_source(the_network, source_dict, **kwargs):
         match_key_type = kwargs['match_key_type'] 
     else:
         match_key_type = 'default'
+
+    reset_source = test_kwarg('reset_source', kwargs, [False, True])
 
     valid_match_key_types = ['default']
     for the_nodetype in the_network.nodetypes:
@@ -109,6 +114,10 @@ def add_source(the_network, source_dict, **kwargs):
 
         for the_nodettype in the_network.nodetypes:
             the_node_ids = [x.id for x in the_nodettype.nodes]
+            if reset_source:
+                the_nodes = [x for x in the_nodettype.nodes]
+                for the_node in the_nodes:
+                    the_node.source = 0.
             for the_pairing_key in pairing_key_model_one_to_source_dict_one:
                 network_id = dict_for_pairing[the_pairing_key]['network_ids'][0]
                 source_dict_id = dict_for_pairing[the_pairing_key]['source_dict_ids'][0]

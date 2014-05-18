@@ -1,0 +1,5 @@
+install.packages("gplots")
+install.packages("RcolorBrewer")
+install.packages("RColorBrewer")
+install.packages('actuar')
+source('ParetoExtrapolation.R')
